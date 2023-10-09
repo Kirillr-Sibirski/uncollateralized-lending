@@ -54,7 +54,7 @@ function App() {
           <SismoConnectButton
               config={config}
               auths={[{ authType: AuthType.EVM_ACCOUNT }]}
-              // claims={[{groupId: GITCOIN_PASSPORT_HOLDERS}]}
+              claims={[{groupId: GITCOIN_PASSPORT_HOLDERS}]}
               signature={{message: "I approve that I'm a human and I'm unique."}}
               onResponseBytes={(response) => {
                 callSismoContract(response);
