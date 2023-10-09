@@ -1,0 +1,115 @@
+[
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "enum AuthType",
+				"name": "authType",
+				"type": "uint8"
+			}
+		],
+		"name": "AuthTypeNotFoundInVerifiedResult",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ADDRESSES_PROVIDER_V2",
+		"outputs": [
+			{
+				"internalType": "contract IAddressesProvider",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "APP_ID",
+		"outputs": [
+			{
+				"internalType": "bytes16",
+				"name": "",
+				"type": "bytes16"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "IS_IMPERSONATION_MODE",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "SISMO_CONNECT_LIB_VERSION",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "config",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "bytes16",
+						"name": "appId",
+						"type": "bytes16"
+					},
+					{
+						"components": [
+							{
+								"internalType": "bool",
+								"name": "isImpersonationMode",
+								"type": "bool"
+							}
+						],
+						"internalType": "struct VaultConfig",
+						"name": "vault",
+						"type": "tuple"
+					}
+				],
+				"internalType": "struct SismoConnectConfig",
+				"name": "",
+				"type": "tuple"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes",
+				"name": "sismoConnectResponse",
+				"type": "bytes"
+			}
+		],
+		"name": "doSomethingUsingSismoConnect",
+		"outputs": [],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
