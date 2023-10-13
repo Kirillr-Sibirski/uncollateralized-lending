@@ -109,7 +109,7 @@ contract CollateralTreasury is ManagerContract { // Create a new contract to be 
     }
 
     // Need to somehow constantly check if the contract is healthy (maybe a loop inside a view function or just a loop in frontend that constantly checks and then sends a message to user though a communication protocol)
-    function health() public returns(uint){
+    function health() public view returns(uint){
         // Need to ensure that these two are in the same unit e.g. USDC
         uint owed = comet.borrowBalanceOf(address(this));
         uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
@@ -117,7 +117,7 @@ contract CollateralTreasury is ManagerContract { // Create a new contract to be 
         return healthFactor;
     }
 
-    function needToPay() public returns(uint){
+    function needToPay() public view returns(uint){
         uint owed = comet.borrowBalanceOf(address(this));
         uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
         uint healthFactor = collateral/owed;
