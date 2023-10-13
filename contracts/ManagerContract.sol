@@ -3,13 +3,14 @@
 pragma solidity ^0.8.17;
 
 import "@sismo-core/sismo-connect-solidity/contracts/SismoConnectLib.sol";
+// Import Comet smart contract here
 
 contract ManagerContract is SismoConnect { // inherits from Sismo Connect library
     event vaultIdReceived(uint256 value1);
     event HealthFactorChanged(address user, uint256 healthFactor);
 
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
-    Comet comet = Comet("0xCometAddress");
+    Comet comet = Comet("0xCometAddress"); // Need to deploy a contract and provide it with the actual smart contract
     address public collateralERC20 = 0x123; //Dummy data
     address public borrowedERC20 = 0x123;
     address public destinationContract = 0x123;
@@ -21,6 +22,14 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     constructor()
         SismoConnect(buildConfig({appId: _appId})) // <--- Sismo Connect constructor
     {}
+
+    function getAPR() public returns(uint256){
+        uint secondsYear = 60 * 60 * 24 * 365;
+        uint utilization = comet.getUtilization();
+        uint borrowRate = comet.getBorrowRate(utilization);
+        uint apr = borrowRate / (10 ^ 18) * secondsYear * 100; // Get anual interest rate
+        return apr;
+    }
 
     function estimateLoan(bytes memory sismoConnectResponse) public returns(uint16, uint256, uint16){    
         SismoConnectVerifiedResult memory result = verify({
@@ -68,22 +77,17 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         return(creditScore, borrowable, interestRate);
     }
 
-    function getLoan(bytes memory sismoConnectResponse) public {
+    function getLoan(bytes memory sismoConnectResponse) public returns(address) {
         CollateralTreasury borrowersTreasury = new CollateralTreasury(msg.sender);
         collateralTreasuries[msg.sender] = borrowersTreasury;
         (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse);
         // we need to fund the newly created treasury 
         borrowersTreasury.getLoanWithCollateral(sismoConnectResponse);
-        
-    }
-
-    function repayLoan(address user) public {
-        // Pass the account associated with Gitcoin passport
-
+        return address(borrowersTreasury);
     }
 }
 
-contract CollateralTreasury is ManagerContract {
+contract CollateralTreasury is ManagerContract { // Create a new contract to be used as a treasury for each collateral under which assets have been borrowed
     address private borrower;
 
     constructor(address _borrower) {
@@ -97,6 +101,27 @@ contract CollateralTreasury is ManagerContract {
 
         // We need to somehow allow this contract to withdraw funds from the user's wallet anytime to pay the interest rate
         comet.supplyFrom(address(this), destinationContract, collateralERC20, amount); // We provide collateral to the protocol
-        comet.withdrawFrom(address(this), borrower, borrowedERC20, borrowable); // The borrowed amount is sent to borrower
+        comet.withdrawFrom(destinationContract, borrower, borrowedERC20, borrowable); // The borrowed amount is sent to borrower
+    }
+
+    function repayLoan(uint256 amount) public {
+        comet.supply(borrowedERC20, amount);
+    }
+
+    // Need to somehow constantly check if the contract is healthy (maybe a loop inside a view function or just a loop in frontend that constantly checks and then sends a message to user though a communication protocol)
+    function health() public returns(uint){
+        // Need to ensure that these two are in the same unit e.g. USDC
+        uint owed = comet.borrowBalanceOf(address(this));
+        uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
+        uint healthFactor = collateral/owed;
+        return healthFactor;
+    }
+
+    function needToPay() public returns(uint){
+        uint owed = comet.borrowBalanceOf(address(this));
+        uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
+        uint healthFactor = collateral/owed;
+        uint repay = (owed) - (collateral/healthFactor); // We find how much borrower needs to pay to get the loan back on a healthy ratio
+        return repay;
     }
 }
