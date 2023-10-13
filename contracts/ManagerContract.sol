@@ -108,6 +108,17 @@ contract CollateralTreasury is ManagerContract { // Create a new contract to be 
         comet.supply(borrowedERC20, amount);
     }
 
+    function needToPay() public view returns(uint){
+        uint owed = comet.borrowBalanceOf(address(this));
+        uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
+        uint healthFactor = collateral/owed;
+        uint repay = (owed) - (collateral/healthFactor); // We find how much borrower needs to pay to get the loan back on a healthy ratio
+        return repay;
+    }
+
+    // The following two functions need to somehow be constantly checked. Maybe just launch a loop inside them and call them once the contract is deployed? Cuz they are view.
+    // But need to figure out if we can send messages through a communication protocol from a view function.
+
     // Need to somehow constantly check if the contract is healthy (maybe a loop inside a view function or just a loop in frontend that constantly checks and then sends a message to user though a communication protocol)
     function health() public view returns(uint){
         // Need to ensure that these two are in the same unit e.g. USDC
@@ -117,11 +128,15 @@ contract CollateralTreasury is ManagerContract { // Create a new contract to be 
         return healthFactor;
     }
 
-    function needToPay() public view returns(uint){
+    function checkLoanRepayment() public view returns(bool) {
         uint owed = comet.borrowBalanceOf(address(this));
         uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
-        uint healthFactor = collateral/owed;
-        uint repay = (owed) - (collateral/healthFactor); // We find how much borrower needs to pay to get the loan back on a healthy ratio
-        return repay;
+        bool repaid = false;
+        if(owed <= 0) {
+            repaid = true;
+            comet.withdraw(collateralERC20, collateral);
+            // Transfer collateral back to manager contract
+        }
+        return repaid;
     }
 }
