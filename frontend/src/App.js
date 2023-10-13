@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 
 function App() {
   const [connectedAddress, setConnectedAddress] = useState('');
-  const contractAddress = '0x4D4344797E687357b57B0DF039881bFb85032866';
+  const contractAddress = '0xcc03EBBD6F7378aAbD010a8329bfE0e018771480';
 
   const handleConnectWallet = async () => {
     try {
@@ -28,6 +28,7 @@ function App() {
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const contract = new ethers.Contract(contractAddress, ABI, provider);
+      console.log("Contract: ",contract)
       const result = await contract.doSomethingUsingSismoConnect(response); // Replace with the function name you want to call
       console.log('Function result:', result);
     } catch (error) {
@@ -57,6 +58,7 @@ function App() {
               claims={[{groupId: GITCOIN_PASSPORT_HOLDERS}]}
               signature={{message: "I approve that I'm a human and I'm unique."}}
               onResponseBytes={(response) => {
+                console.log("Call Sismo Contract.")
                 callSismoContract(response);
                   // call your contract/backend with the response as bytes
               }}
