@@ -6,8 +6,17 @@ import "@sismo-core/sismo-connect-solidity/contracts/SismoConnectLib.sol";
 
 contract ManagerContract is SismoConnect { // inherits from Sismo Connect library
     event vaultIdReceived(uint256 value1);
+    event HealthFactorChanged(address user, uint256 healthFactor);
 
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
+    Comet comet = Comet("0xCometAddress");
+    address public collateralERC20 = 0x123; //Dummy data
+    address public borrowedERC20 = 0x123;
+    address public destinationContract = 0x123;
+    uint256 public healthFactorThreshold = 150e16; // 1.5 as the health factor threshold (150e16)
+
+    mapping(address => uint256) public userCreditScore;
+    mapping(address => CollateralTreasury) public collateralTreasuries;
 
     constructor()
         SismoConnect(buildConfig({appId: _appId})) // <--- Sismo Connect constructor
@@ -55,12 +64,39 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
             borrowable = 1000; // USDC
             interestRate = 15; // % per year
         }
-        // It's also would be a good practice if we could check the interest rate on the Compound protocol itself so we can actually generate some money
+        // It's also would be a good practice if we could check that interest rate on the Compound protocol is lower than our's so we can actually generate some money
         return(creditScore, borrowable, interestRate);
     }
 
-    function getLoan(bytes memory sismoConnectResponse) public {        
+    function getLoan(bytes memory sismoConnectResponse) public {
+        CollateralTreasury borrowersTreasury = new CollateralTreasury(msg.sender);
+        collateralTreasuries[msg.sender] = borrowersTreasury;
         (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse);
+        // we need to fund the newly created treasury 
+        borrowersTreasury.getLoanWithCollateral(sismoConnectResponse);
         
+    }
+
+    function repayLoan(address user) public {
+        // Pass the account associated with Gitcoin passport
+
+    }
+}
+
+contract CollateralTreasury is ManagerContract {
+    address private borrower;
+
+    constructor(address _borrower) {
+        borrower = _borrower;
+    }
+    
+    function getLoanWithCollateral(bytes memory sismoConnectResponse) internal {
+        (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse);
+        // To prevent abuse, we should also set it to only one loan at a time per user
+        uint256 amount = borrowable * 3; // Need to get a proper collateral factor for the asset but for simplicity, we just provide 3 times more collateral than we want to borrow
+
+        // We need to somehow allow this contract to withdraw funds from the user's wallet anytime to pay the interest rate
+        comet.supplyFrom(address(this), destinationContract, collateralERC20, amount); // We provide collateral to the protocol
+        comet.withdrawFrom(address(this), borrower, borrowedERC20, borrowable); // The borrowed amount is sent to borrower
     }
 }
