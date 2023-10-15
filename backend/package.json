@@ -1,0 +1,11 @@
+{
+  "name": "hardhat-project",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.18.1"
+  },
+  "dependencies": {
+    "@sismo-core/sismo-connect-solidity": "^0.0.21",
+    "dotenv": "^16.3.1"
+  }
+}
