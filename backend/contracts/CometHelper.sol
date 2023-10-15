@@ -95,31 +95,39 @@ interface CometRewards {
 interface ERC20 {
   function approve(address spender, uint256 amount) external returns (bool);
   function decimals() external view returns (uint);
+  function transfer(address to, uint256 value) external returns (bool);
+  function transferFrom(address from, address to, uint256 value) external returns (bool);
 }
 
 contract CometHelper {
-  address public cometAddress;
+  address public cometAddress = 0x3EE77595A8459e93C2888b13aDB354017B198188; // USDC-Goerli // Mainnet: 0xc3d688B66703497DAA19211EEdff47f25384cdc3
   uint constant public DAYS_PER_YEAR = 365;
   uint constant public SECONDS_PER_DAY = 60 * 60 * 24;
   uint constant public SECONDS_PER_YEAR = SECONDS_PER_DAY * DAYS_PER_YEAR;
   uint public BASE_MANTISSA;
   uint public BASE_INDEX_SCALE;
   uint constant public MAX_UINT = type(uint).max;
+  address public deployedContract;
 
   event AssetInfoLog(CometStructs.AssetInfo);
   event LogUint(string, uint);
   event LogAddress(string, address);
 
-  constructor(address _cometAddress) {
-    cometAddress = _cometAddress;
+  constructor(address deployed) {
     BASE_MANTISSA = Comet(cometAddress).baseScale();
     BASE_INDEX_SCALE = Comet(cometAddress).baseIndexScale();
+    deployedContract = deployed;
+  }
+
+  modifier onlyDeployingContract() {
+    require(msg.sender == deployedContract, "Not authorized");
+    _;
   }
 
   /*
    * Supply an asset that this contract holds to Compound III
    */
-  function supply(address asset, uint amount) public {
+  function supply(address asset, uint amount) public onlyDeployingContract {
     ERC20(asset).approve(cometAddress, amount);
     Comet(cometAddress).supply(asset, amount);
   }
@@ -127,16 +135,24 @@ contract CometHelper {
   /*
    * Withdraws an asset from Compound III to this contract
    */
-  function withdraw(address asset, uint amount) public {
+  function withdraw(address asset, uint amount) public onlyDeployingContract {
     Comet(cometAddress).withdraw(asset, amount);
+  }
+
+  function withdrawToUser(address asset, uint amount, address user) public onlyDeployingContract {
+    withdraw(asset, amount);
+    ERC20(asset).transfer(user, amount); // Send borrowed amount to the borrower
   }
 
   /*
    * Repays an entire borrow of the base asset from Compound III
    */
-  function repayFullBorrow(address baseAsset) public {
+  function repayFullBorrow(address baseAsset, address collateralAsset) public onlyDeployingContract {
+    // Make this payable
     ERC20(baseAsset).approve(cometAddress, MAX_UINT);
-    Comet(cometAddress).supply(baseAsset, MAX_UINT);
+    Comet(cometAddress).supply(baseAsset, MAX_UINT); // Repay the full owed amount
+    Comet(cometAddress).withdraw(collateralAsset, MAX_UINT); // Get the full collateral out of the Compound protocol
+    ERC20(collateralAsset).transfer(msg.sender, MAX_UINT); // Transfer the collateral back to main treasury
   }
 
   function needToRepay(address asset) public view returns(int, int){

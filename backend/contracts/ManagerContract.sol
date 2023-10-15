@@ -10,7 +10,6 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     event vaultIdReceived(uint256 value1);
 
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
-    address public _cometAddess = 0x3EE77595A8459e93C2888b13aDB354017B198188; // USDC-Goerli // Mainnet: 0xc3d688B66703497DAA19211EEdff47f25384cdc3
     address public _collateralAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
     address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
     mapping(address => CometHelper) public specificComets;
@@ -67,7 +66,13 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     }
 }
 
-contract LoanFactory is ManagerContract { // This contract must be funded aka it is used as treasury
+contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
+    ERC20 public token;
+
+    constructor() {
+        token = ERC20(_collateralAsset);
+    }
+
 
     modifier onlyBorrower {
         require(address(specificComets[msg.sender]) != address(0), "User does not have an active loan.");
@@ -77,13 +82,13 @@ contract LoanFactory is ManagerContract { // This contract must be funded aka it
     function getLoan(bytes memory sismoConnectResponse) public {
         require(address(specificComets[msg.sender]) == address(0), "User already has an active loan.");
         (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse); // We estimate loan and also check that user has digital identity and meets the requirements
-        CometHelper cometUser = new CometHelper(_cometAddess);
-        specificComets[msg.sender] = cometUser;
-        // Provide the above contract with enough collateral from this treasury
         uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+        require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
+        CometHelper cometUser = new CometHelper(address(this));
+        specificComets[msg.sender] = cometUser;
+        require(token.transfer(address(cometUser), collateralAmount), "Token transfer to user's treasury failed.");
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
-        cometUser.withdraw(_borrowAsset, borrowable); // We get the borrowed amount to user's treasury
-        // Send borrowed amount to the borrower (msg.sender)
+        cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury
     }
 
     // Constantly loop through it to check that health score is above 1.5, if not, send message to the user to repay the loan
@@ -99,15 +104,23 @@ contract LoanFactory is ManagerContract { // This contract must be funded aka it
     /*
         Repay back the borrowed amount
     */
-    function repayInterestRate(uint amount) onlyBorrower public {
+    function repayInterestRate(uint amount) onlyBorrower public payable {
+        require(
+            token.transferFrom(msg.sender, address(specificComets[msg.sender]), amount),
+            "Transfer failed. Ensure you've approved this contract."
+        );
         specificComets[msg.sender].supply(_borrowAsset, amount);
     }
 
-    function repayFull() onlyBorrower public { 
-        specificComets[msg.sender].repayFullBorrow(_borrowAsset);
+    function repayFull() onlyBorrower public payable { 
+        int owedAmount = owed();
+
+        require(
+            token.transferFrom(msg.sender, address(specificComets[msg.sender]), uint(owedAmount)),
+            "Transfer failed. Ensure you've approved this contract."
+        );
+        specificComets[msg.sender].repayFullBorrow(_borrowAsset, _collateralAsset);
         delete specificComets[msg.sender]; 
-        // Withdraw the collateral from Compound and transfer it back here to the main treasury
-        // Emit an event that loan has been repaid successfully or display it somehow otherwise
     }
 
     function totalOwed() onlyBorrower public view returns(int){
