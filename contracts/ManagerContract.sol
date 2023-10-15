@@ -3,33 +3,22 @@
 pragma solidity ^0.8.17;
 
 import "@sismo-core/sismo-connect-solidity/contracts/SismoConnectLib.sol";
+import "./CometHelper.sol";
 // Import Comet smart contract here
 
 contract ManagerContract is SismoConnect { // inherits from Sismo Connect library
     event vaultIdReceived(uint256 value1);
-    event HealthFactorChanged(address user, uint256 healthFactor);
 
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
-    Comet comet = Comet("0xCometAddress"); // Need to deploy a contract and provide it with the actual smart contract
-    address public collateralERC20 = 0x123; //Dummy data
-    address public borrowedERC20 = 0x123;
-    address public destinationContract = 0x123;
-    uint256 public healthFactorThreshold = 150e16; // 1.5 as the health factor threshold (150e16)
+    address public _cometAddess = 0x3EE77595A8459e93C2888b13aDB354017B198188; // USDC-Goerli // Mainnet: 0xc3d688B66703497DAA19211EEdff47f25384cdc3
+    address public _collateralAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    mapping(address => CometHelper) public specificComets;
 
-    mapping(address => uint256) public userCreditScore;
-    mapping(address => CollateralTreasury) public collateralTreasuries;
 
     constructor()
         SismoConnect(buildConfig({appId: _appId})) // <--- Sismo Connect constructor
     {}
-
-    function getAPR() public returns(uint256){
-        uint secondsYear = 60 * 60 * 24 * 365;
-        uint utilization = comet.getUtilization();
-        uint borrowRate = comet.getBorrowRate(utilization);
-        uint apr = borrowRate / (10 ^ 18) * secondsYear * 100; // Get anual interest rate
-        return apr;
-    }
 
     function estimateLoan(bytes memory sismoConnectResponse) public returns(uint16, uint256, uint16){    
         SismoConnectVerifiedResult memory result = verify({
@@ -76,67 +65,52 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         // It's also would be a good practice if we could check that interest rate on the Compound protocol is lower than our's so we can actually generate some money
         return(creditScore, borrowable, interestRate);
     }
-
-    function getLoan(bytes memory sismoConnectResponse) public returns(address) {
-        CollateralTreasury borrowersTreasury = new CollateralTreasury(msg.sender);
-        collateralTreasuries[msg.sender] = borrowersTreasury;
-        (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse);
-        // we need to fund the newly created treasury 
-        borrowersTreasury.getLoanWithCollateral(sismoConnectResponse);
-        return address(borrowersTreasury);
-    }
 }
 
-contract CollateralTreasury is ManagerContract { // Create a new contract to be used as a treasury for each collateral under which assets have been borrowed
-    address private borrower;
+contract LoanFactory is ManagerContract { // This contract must be funded aka it is used as treasury
 
-    constructor(address _borrower) {
-        borrower = _borrower;
-    }
-    
-    function getLoanWithCollateral(bytes memory sismoConnectResponse) internal {
-        (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse);
-        // To prevent abuse, we should also set it to only one loan at a time per user
-        uint256 amount = borrowable * 3; // Need to get a proper collateral factor for the asset but for simplicity, we just provide 3 times more collateral than we want to borrow
-
-        // We need to somehow allow this contract to withdraw funds from the user's wallet anytime to pay the interest rate
-        comet.supplyFrom(address(this), destinationContract, collateralERC20, amount); // We provide collateral to the protocol
-        comet.withdrawFrom(destinationContract, borrower, borrowedERC20, borrowable); // The borrowed amount is sent to borrower
+    modifier onlyBorrower {
+        require(address(specificComets[msg.sender]) != address(0), "User does not have an active loan.");
+        _;
     }
 
-    function repayLoan(uint256 amount) public {
-        comet.supply(borrowedERC20, amount);
+    function getLoan(bytes memory sismoConnectResponse) public {
+        require(address(specificComets[msg.sender]) == address(0), "User already has an active loan.");
+        (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse); // We estimate loan and also check that user has digital identity and meets the requirements
+        CometHelper cometUser = new CometHelper(_cometAddess);
+        specificComets[msg.sender] = cometUser;
+        // Provide the above contract with enough collateral from this treasury
+        uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+        cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
+        cometUser.withdraw(_borrowAsset, borrowable); // We get the borrowed amount to user's treasury
+        // Send borrowed amount to the borrower (msg.sender)
     }
 
-    function needToPay() public view returns(uint){
-        uint owed = comet.borrowBalanceOf(address(this));
-        uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
-        uint healthFactor = collateral/owed;
-        uint repay = (owed) - (collateral/healthFactor); // We find how much borrower needs to pay to get the loan back on a healthy ratio
-        return repay;
+    // Constantly loop through it to check that health score is above 1.5, if not, send message to the user to repay the loan
+    /*
+        Determines how much the user must repay in order to get back on a healthy score;
+    */
+    function needToRepay() onlyBorrower public view returns(int, int) {
+        CometHelper cometUser = specificComets[msg.sender];
+        (int health, int repay) = cometUser.needToRepay(_collateralAsset);
+        return (health, repay);
     }
 
-    // The following two functions need to somehow be constantly checked. Maybe just launch a loop inside them and call them once the contract is deployed? Cuz they are view.
-    // But need to figure out if we can send messages through a communication protocol from a view function.
-
-    // Need to somehow constantly check if the contract is healthy (maybe a loop inside a view function or just a loop in frontend that constantly checks and then sends a message to user though a communication protocol)
-    function health() public view returns(uint){
-        // Need to ensure that these two are in the same unit e.g. USDC
-        uint owed = comet.borrowBalanceOf(address(this));
-        uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
-        uint healthFactor = collateral/owed;
-        return healthFactor;
+    /*
+        Repay back the borrowed amount
+    */
+    function repayInterestRate(uint amount) onlyBorrower public {
+        specificComets[msg.sender].supply(_borrowAsset, amount);
     }
 
-    function checkLoanRepayment() public view returns(bool) {
-        uint owed = comet.borrowBalanceOf(address(this));
-        uint collateral = comet.collateralBalanceOf(address(this), collateralERC20);
-        bool repaid = false;
-        if(owed <= 0) {
-            repaid = true;
-            comet.withdraw(collateralERC20, collateral);
-            // Transfer collateral back to manager contract
-        }
-        return repaid;
+    function repayFull() onlyBorrower public { 
+        specificComets[msg.sender].repayFullBorrow(_borrowAsset);
+        delete specificComets[msg.sender]; 
+        // Withdraw the collateral from Compound and transfer it back here to the main treasury
+        // Emit an event that loan has been repaid successfully or display it somehow otherwise
+    }
+
+    function totalOwed() onlyBorrower public view returns(int){
+        return specificComets[msg.sender].owed(); 
     }
 }
