@@ -91,14 +91,25 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
         cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury
     }
 
-    // Constantly loop through it to check that health score is above 1.5, if not, send message to the user to repay the loan
     /*
         Determines how much the user must repay in order to get back on a healthy score;
     */
-    function needToRepay() onlyBorrower public view returns(int, int) {
+    function needToRepay() onlyBorrower public view returns(int, int) { // We can do a loop on frontend side.
         CometHelper cometUser = specificComets[msg.sender];
         (int health, int repay) = cometUser.needToRepay(_collateralAsset);
-        return (health, repay);
+        if(liquitable()) { // that means that the collateral is most likely to be liquidated -> defaulted
+           // Send the message to user to liquidate
+           // Downgrade credit score 
+           // We also withdraw all the remaining collateral here
+        }
+        if(block.timestamp > cometUser.paymentDue()) { // If payment was overdue by 1 day
+            // In frontend, when the event was emitted, we just check that we received the event one time (because in this implentation it will ciosntantly be emitted until user repays it)
+            // Send the message to user to liquidate
+            // Downgrade credit score
+        }
+        // If health < 1.5*10, we send a message to user to repay the needed amount
+        // Also check if user hasn't repaid the amount for more than a day, we downgrade the credit score
+        return (health, repay); // Ok, we can use XMTP SDK to message the user to repay the loan but how do we downgrade credit score without changing the state?
     }
 
     /*
@@ -110,6 +121,8 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
             "Transfer failed. Ensure you've approved this contract."
         );
         specificComets[msg.sender].supply(_borrowAsset, amount);
+        CometHelper cometUser = specificComets[msg.sender];
+        cometUser.setRepayDue(block.timestamp+86400); // Reset the repay date
     }
 
     function repayFull() onlyBorrower public payable { 
@@ -126,4 +139,5 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     function totalOwed() onlyBorrower public view returns(int){
         return specificComets[msg.sender].owed(); 
     }
+
 }

@@ -85,6 +85,8 @@ interface Comet {
 
   function baseMinForRewards() external view returns (uint256);
   function baseToken() external view returns (address);
+
+  function isLiquidatable(address account) external view returns (bool);
 }
 
 interface CometRewards {
@@ -108,6 +110,8 @@ contract CometHelper {
   uint public BASE_INDEX_SCALE;
   uint constant public MAX_UINT = type(uint).max;
   address public deployedContract;
+  uint public paymentDue;
+  uint public paymentMissCounter;
 
   event AssetInfoLog(CometStructs.AssetInfo);
   event LogUint(string, uint);
@@ -168,6 +172,18 @@ contract CometHelper {
     return owedAmount;
   }
 
+  function liquitable() public view returns(bool) {
+    return Comet(cometAddress).isLiquidatable(address(this));
+  }
+
+  function setRepayDue(uint date) public onlyDeployingContract {
+    paymentDue = date;
+  }
+
+  function setPaymentMissCounter(uint value) public onlyDeployingContract {
+    paymentMissCounter = value;
+  }
+ 
   // /*
   //  * Get the current supply APR in Compound III
   //  */
