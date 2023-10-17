@@ -69,6 +69,8 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
 contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
     ERC20 public token;
 
+    event LiquidationEvent();
+
     constructor() {
         token = ERC20(_collateralAsset);
     }
@@ -76,6 +78,11 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
 
     modifier onlyBorrower {
         require(address(specificComets[msg.sender]) != address(0), "User does not have an active loan.");
+        _;
+    }
+
+    modifier onlyOwner {
+        require(true, "Caller doesn't have enough permissions."); // Check who deployed the contract
         _;
     }
 
@@ -93,24 +100,45 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
 
     /*
         Determines how much the user must repay in order to get back on a healthy score;
+        We can do a loop off-chain to actually check it. Probably will have to run node.js server to constanly kick this function but it also means that it will have to rn thorugh every single one of the 
+        loans which is not gas efficient at all, as we are on testnet right now, we don't really care. And I'm sure this will do the trick for the hackathon but for future we will for sure need something 
+        more efficient.
+        These 3 functions are going to be monitored off-chain (node.js server).
     */
-    function needToRepay() onlyBorrower public view returns(int, int) { // We can do a loop on frontend side.
-        CometHelper cometUser = specificComets[msg.sender];
+    function checkRepay(address user) public view returns(int, int) { 
+        CometHelper cometUser = specificComets[user];
         (int health, int repay) = cometUser.needToRepay(_collateralAsset);
-        if(liquitable()) { // that means that the collateral is most likely to be liquidated -> defaulted
-           // Send the message to user to liquidate
-           // Downgrade credit score 
-           // We also withdraw all the remaining collateral here
-        }
-        if(block.timestamp > cometUser.paymentDue()) { // If payment was overdue by 1 day
-            // In frontend, when the event was emitted, we just check that we received the event one time (because in this implentation it will ciosntantly be emitted until user repays it)
-            // Send the message to user to liquidate
-            // Downgrade credit score
-        }
         // If health < 1.5*10, we send a message to user to repay the needed amount
         // Also check if user hasn't repaid the amount for more than a day, we downgrade the credit score
         return (health, repay); // Ok, we can use XMTP SDK to message the user to repay the loan but how do we downgrade credit score without changing the state?
     }
+    function checkLiquitable(address user) public view returns(bool) {
+        CometHelper cometUser = specificComets[user];
+        return cometUser.liquitable();
+    }
+    function checkPayment(address user) public view returns(bool) {
+        // Most likely will have to return paymentDue and current block.timestamp and check these two things off-chain, if the payment date is missed by 1 day, it's one punishment, if it's more, it's a worse punishment
+        CometHelper cometUser = specificComets[user];
+        if(block.timestamp > cometUser.paymentDue()) { // If payment was overdue by 1 day
+            return true;
+        }
+    }
+
+    /*
+        These events are going to be called off-chain after the above functions are monitored
+    */
+    function liquidateEvent(address user) public onlyOwner {
+        // Downgrade credit score (a lot)
+        // Withdraw left over collateral from Compound and back to here
+    }
+    function overduePaymentEvent(address user, uint day) public onlyOwner {
+        // Downgrade credit score (depending on how many days)
+    }
+    function repayDueDay(address user) public onlyOwner {
+        CometHelper cometUser = specificComets[user];
+        cometUser.setRepayDue(block.timestamp+86400); // Reset the repay date
+    } 
+
 
     /*
         Repay back the borrowed amount
@@ -120,6 +148,7 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
             token.transferFrom(msg.sender, address(specificComets[msg.sender]), amount),
             "Transfer failed. Ensure you've approved this contract."
         );
+        // Keep commission functionality
         specificComets[msg.sender].supply(_borrowAsset, amount);
         CometHelper cometUser = specificComets[msg.sender];
         cometUser.setRepayDue(block.timestamp+86400); // Reset the repay date
