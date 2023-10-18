@@ -16,11 +16,9 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
     // allow impersonation
     bool private _isImpersonationMode = true; // remove later
-    address public _collateralAsset =
-        0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
-    address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
-    mapping(address => CometHelper) public specificComets; //store user's comet contract address
     mapping(address => uint16) public creditScores; //store user's credit score
+
+    
 
     constructor()
         SismoConnect(
@@ -126,42 +124,50 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     }
 }
 
-contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
-    ERC20 public token;
+contract LoanFactory { // This contract must be funded aka it is used as treasury
+    address public _collateralAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    mapping(address => CometHelper) public specificComets; //store user's comet contract address
+
+    ERC20 public token = ERC20(_collateralAsset);
+    address public Owner;
+    address public _ManagerContract;
 
     event LiquidationEvent();
 
-    constructor() {
-        token = ERC20(_collateralAsset);
+    constructor(address manager) {
+        _ManagerContract = manager;
+        Owner = msg.sender;
     }
 
     modifier onlyBorrower {
-        require(address(specificComets[msg.sender]) != address(0), "User does not have an active loan.");
+        require(address(specificComets[msg.sender]) != address(0)); // "User does not have an active loan."
         _;
     }
 
     modifier onlyOwner {
-        require(true, "Caller doesn't have enough permissions."); // Check who deployed the contract
+        require(msg.sender == Owner); // "Caller doesn't have enough permissions."
         _;
     }
 
     function getLoan() public {
-        require(address(specificComets[msg.sender]) == address(0), "User already has an active loan.");
+        ManagerContract manager = ManagerContract(_ManagerContract);
+        require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
         (
-            uint16 creditScore,
-            uint256 interestRate,
+            ,
+            ,
             uint256 borrowable,
             uint256 collateral
-        ) = estimateLoan(msg.sender); // We estimate loan and also check that user has digital identity and meets the requirements
+        ) = manager.estimateLoan(msg.sender); // We estimate loan and also check that user has digital identity and meets the requirements
         require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
-            token.transferFrom(msg.sender, address(this), collateral),
-            "Transfer failed. Ensure you've approved this contract."
+            token.transferFrom(msg.sender, address(this), collateral)
+            // "Transfer failed. Ensure you've approved this contract."
         );
         uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
-        require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
+        require (address(this).balance >= collateralAmount); // "Not enough funds in the factory contract."
         CometHelper cometUser = new CometHelper(address(this));
         specificComets[msg.sender] = cometUser;
-        require(token.transfer(address(cometUser), collateralAmount), "Token transfer to user's treasury failed.");
+        require(token.transfer(address(cometUser), collateralAmount)); // "Token transfer to user's treasury failed."
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
         cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury
     }
@@ -183,7 +189,6 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
         return cometUser.liquitable();
     }
     function checkPayment(address user) public view returns(uint, uint) {
-        // Most likely will have to return paymentDue and current block.timestamp and check these two things off-chain, if the payment date is missed by 1 day, it's one punishment, if it's more, it's a worse punishment
         CometHelper cometUser = specificComets[user];
         return(block.timestamp, cometUser.paymentDue());
     }
@@ -194,11 +199,12 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     function liquidateEvent(address user) public onlyOwner {
         // Downgrade credit score (a lot)
         CometHelper cometUser = specificComets[user];
-        cometUser.withdrawToUser(_collateralAsset, MAX_UINT, address(this));
+        cometUser.liquidate(_collateralAsset, address(this));
     }
     function overduePaymentEvent(address user, uint day) public onlyOwner {
-        require((block.timestamp-overdueCharged)/86400 >= 1, "Overdue can only be charged with 1 day intervals."); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
         CometHelper cometUser = specificComets[user];
+        // "Overdue can only be charged with 1 day intervals."
+        require((block.timestamp-cometUser.overdueCharged())/86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
         cometUser.setIsOverdue(true);
         cometUser.setOverdueCharged(block.timestamp);
         // Downgrade credit score (depending on how many days)
@@ -212,10 +218,9 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
         Repay back the borrowed amount
     */
     function repayInterestRate() onlyBorrower public payable {
-        (int health, int amount) = checkRepay(msg.sender);
+        (, int amount) = checkRepay(msg.sender);
         require(
-            token.transferFrom(msg.sender, address(this), uint(amount)),
-            "Transfer failed. Ensure you've approved this contract."
+            token.transferFrom(msg.sender, address(this), uint(amount)) // "Transfer failed. Ensure you've approved this contract."
         );
 
         token.transferFrom(address(this), address(specificComets[msg.sender]), uint(amount)/2);
@@ -226,15 +231,16 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     }
 
     function repayFull() onlyBorrower public payable { 
-        int owedAmount = owed();
+        CometHelper cometUser = specificComets[msg.sender];
+        int owedAmount = cometUser.owed();
         require(
-            token.transferFrom(msg.sender, address(this), uint(owedAmount)), // With full commission
-            "Transfer failed. Ensure you've approved this contract."
+            token.transferFrom(msg.sender, address(this), uint(owedAmount)) // "Transfer failed. Ensure you've approved this contract." 
+            // With full commission
         );
 
-        token.transferFrom(address(this), address(specificComets[msg.sender]), uint(owedAmount/2));
-        specificComets[msg.sender].repayFullBorrow(_borrowAsset, _collateralAsset);
-        delete specificComets[msg.sender]; 
+        token.transferFrom(address(this), address(cometUser), uint(owedAmount/2));
+        cometUser.repayFullBorrow(_borrowAsset, _collateralAsset);
+        delete cometUser; 
     }
 
     function totalOwed() onlyBorrower public view returns(int){

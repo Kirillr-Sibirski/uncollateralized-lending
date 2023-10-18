@@ -119,8 +119,6 @@ contract CometHelper {
   event LogUint(string, uint);
   event LogAddress(string, address);
 
-
-
   constructor(address deployed) {
     BASE_MANTISSA = Comet(cometAddress).baseScale();
     BASE_INDEX_SCALE = Comet(cometAddress).baseIndexScale();
@@ -191,6 +189,10 @@ contract CometHelper {
   function setOverdueCharged(uint value) public onlyDeployingContract {
     overdueCharged = value;
   }
+
+  function liquidate(address collateral, address addr) public onlyDeployingContract() {
+    withdrawToUser(collateral, MAX_UINT, addr);
+  }
  
   // /*
   //  * Get the current supply APR in Compound III
@@ -204,11 +206,11 @@ contract CometHelper {
   /*
    * Get the current borrow APR in Compound III
    */
-  function getBorrowApr() public view returns (uint) {
-    Comet comet = Comet(cometAddress);
-    uint utilization = comet.getUtilization();
-    return comet.getBorrowRate(utilization) * SECONDS_PER_YEAR * 100;
-  }
+  // function getBorrowApr() public view returns (uint) {
+  //   Comet comet = Comet(cometAddress);
+  //   uint utilization = comet.getUtilization();
+  //   return comet.getBorrowRate(utilization) * SECONDS_PER_YEAR * 100;
+  // }
 
   /*
    * Get the current reward for supplying APR in Compound III
@@ -276,18 +278,18 @@ contract CometHelper {
   /*
    * Get the borrow collateral factor for an asset
    */
-  function getBorrowCollateralFactor(address asset) public view returns (uint) {
-    Comet comet = Comet(cometAddress);
-    return comet.getAssetInfoByAddress(asset).borrowCollateralFactor;
-  }
+  // function getBorrowCollateralFactor(address asset) public view returns (uint) {
+  //   Comet comet = Comet(cometAddress);
+  //   return comet.getAssetInfoByAddress(asset).borrowCollateralFactor;
+  // }
 
   /*
    * Get the liquidation collateral factor for an asset
    */
-  function getLiquidateCollateralFactor(address asset) public view returns (uint) {
-    Comet comet = Comet(cometAddress);
-    return comet.getAssetInfoByAddress(asset).liquidateCollateralFactor;
-  }
+  // function getLiquidateCollateralFactor(address asset) public view returns (uint) {
+  //   Comet comet = Comet(cometAddress);
+  //   return comet.getAssetInfoByAddress(asset).liquidateCollateralFactor;
+  // }
 
   /*
    * Get the price feed address for an asset
@@ -308,10 +310,10 @@ contract CometHelper {
   /*
    * Get the current price of an asset from the protocol's persepctive
    */
-  function getCompoundPrice(address singleAssetPriceFeed) public view returns (uint) {
-    Comet comet = Comet(cometAddress);
-    return comet.getPrice(singleAssetPriceFeed);
-  }
+  // function getCompoundPrice(address singleAssetPriceFeed) public view returns (uint) {
+  //   Comet comet = Comet(cometAddress);
+  //   return comet.getPrice(singleAssetPriceFeed);
+  // }
 
   /*
    * Gets the amount of reward tokens due to this contract address
