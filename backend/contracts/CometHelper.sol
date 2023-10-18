@@ -102,6 +102,7 @@ interface ERC20 {
 }
 
 contract CometHelper {
+  int104 private commissionMultiplier = 2;
   address public cometAddress = 0x3EE77595A8459e93C2888b13aDB354017B198188; // USDC-Goerli // Mainnet: 0xc3d688B66703497DAA19211EEdff47f25384cdc3
   uint constant public DAYS_PER_YEAR = 365;
   uint constant public SECONDS_PER_DAY = 60 * 60 * 24;
@@ -172,7 +173,7 @@ contract CometHelper {
 
   function owed() public view returns(int104) {
     int104 owedAmount = Comet(cometAddress).userBasic(address(this)).principal;
-    return owedAmount*2; // With commission
+    return owedAmount*commissionMultiplier; // With commission
   }
 
   function liquitable() public view returns(bool) {
