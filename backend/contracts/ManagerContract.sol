@@ -150,6 +150,18 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         _;
     }
 
+    function sendEtherToTreasury() public payable { // Need to make it proper collateral assets
+        uint amount = 0.02 ether; // Specify the amount in Ether
+        require(msg.value >= amount, "Insufficient Ether sent");
+
+        // Perform any additional checks or logic if needed
+
+        // Transfer the Ether to the treasury address (address of this contract)
+        token.transfer(address(this), amount);
+
+        // You can now perform any additional logic or emit events related to the Ether transfer.
+    }
+
     function getLoan() public {
         ManagerContract manager = ManagerContract(_ManagerContract);
         require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
