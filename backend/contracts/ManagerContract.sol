@@ -153,7 +153,10 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
             uint256 borrowable,
             uint256 collateral
         ) = estimateLoan(msg.sender); // We estimate loan and also check that user has digital identity and meets the requirements
-
+        require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
+            token.transferFrom(msg.sender, address(this), collateral),
+            "Transfer failed. Ensure you've approved this contract."
+        );
         uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
         require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
         CometHelper cometUser = new CometHelper(address(this));
@@ -208,17 +211,16 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     /*
         Repay back the borrowed amount
     */
-    function repayInterestRate(uint amount) onlyBorrower public payable {
-        (int health, int repay) = checkRepay(msg.sender);
-        require(int(amount) >= repay, "Not enough to cover the interest rate.");
+    function repayInterestRate() onlyBorrower public payable {
+        (int health, int amount) = checkRepay(msg.sender);
         require(
-            token.transferFrom(msg.sender, address(this), amount),
+            token.transferFrom(msg.sender, address(this), uint(amount)),
             "Transfer failed. Ensure you've approved this contract."
         );
 
-        token.transferFrom(address(this), address(specificComets[msg.sender]), amount/2);
+        token.transferFrom(address(this), address(specificComets[msg.sender]), uint(amount)/2);
 
-        specificComets[msg.sender].supply(_borrowAsset, amount/2);
+        specificComets[msg.sender].supply(_borrowAsset, uint(amount)/2);
         CometHelper cometUser = specificComets[msg.sender];
         cometUser.setIsOverdue(false);
     }
