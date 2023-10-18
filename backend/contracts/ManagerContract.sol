@@ -3,12 +3,9 @@
 pragma solidity ^0.8.17;
 
 import "@sismo-core/sismo-connect-solidity/contracts/SismoConnectLib.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./CometHelper.sol";
 
 contract ManagerContract is SismoConnect { // inherits from Sismo Connect library
-    event vaultIdReceived(uint256 value1);
-
     bytes16 public constant GITCOIN_PASSPORT_HOLDERS =
         0x1cde61966decb8600dfd0749bd371f12;
     bytes16 public constant ROCIFI_CREDIT_HOLDERS =
@@ -49,16 +46,14 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         claims[0] = buildClaim({
             // claim Gitcoin Passport Holders Data Group membership
             groupId: GITCOIN_PASSPORT_HOLDERS,
-            claimType: ClaimType.GTE,
             value: 20,
-            isSelectableByUser: true
+            claimType: ClaimType.GTE
         });
         claims[1] = buildClaim({
             // claim Rocifi Credit Score Data Group membership
             groupId: ROCIFI_CREDIT_HOLDERS,
             claimType: ClaimType.GTE,
-            value: 1,
-            isSelectableByUser: true
+            value: 1
         });
 
         // verify the response regarding our original request
@@ -74,15 +69,14 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         // in this case the userId is the vaultId (since we used AuthType.VAULT in the auth request),
         // it is the anonymous identifier of a user's vault for a specific app
         // --> vaultId = hash(userVaultSecret, appId)
-        uint256 vaultId = result.getUserId(AuthType.VAULT);
-        // uint256 vaultId = SismoConnectHelper.getUserId(result, AuthType.EVM_ACCOUNT);
+        uint256 vaultId = SismoConnectHelper.getUserId(result, AuthType.VAULT);
 
         emit ResponseVerified(result);
 
         // Update credit score
-        uint8 rocifiValue = result.getValue(ROCIFI_CREDIT_HOLDERS);
-        uint16 newScore = calculateCreditScore(rocifiValue);
-        creditScores[msg.sender] += newScore;
+        //uint8 rocifiValue = result.getValue(ROCIFI_CREDIT_HOLDERS);
+        //uint16 newScore = calculateCreditScore(rocifiValue);
+        //creditScores[msg.sender] += newScore;
     }
 
     function calculateCreditScore(
@@ -132,9 +126,7 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     }
 }
 
-contract LoanFactory is ManagerContract, ERC20, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
-    using SafeMath for uint256;
-
+contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
     ERC20 public token;
 
     event LiquidationEvent();
@@ -153,13 +145,14 @@ contract LoanFactory is ManagerContract, ERC20, CometHelper(address(this)) { // 
         _;
     }
 
-    function getLoan(bytes memory sismoConnectResponse) public {
+    function getLoan() public {
         require(address(specificComets[msg.sender]) == address(0), "User already has an active loan.");
         (
             uint16 creditScore,
+            uint256 interestRate,
             uint256 borrowable,
-            uint16 interestRate
-        ) = estimateLoan(sismoConnectResponse); // We estimate loan and also check that user has digital identity and meets the requirements
+            uint256 collateral
+        ) = estimateLoan(msg.sender); // We estimate loan and also check that user has digital identity and meets the requirements
 
         uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
         require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
