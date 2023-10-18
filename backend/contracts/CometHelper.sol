@@ -111,12 +111,14 @@ contract CometHelper {
   uint constant public MAX_UINT = type(uint).max;
   address public deployedContract;
   uint public paymentDue;
-  uint public paymentMissCounter;
   bool public isOverdue; 
+  uint public overdueCharged; // This is when we last charge borrower for not returning the loan
 
   event AssetInfoLog(CometStructs.AssetInfo);
   event LogUint(string, uint);
   event LogAddress(string, address);
+
+
 
   constructor(address deployed) {
     BASE_MANTISSA = Comet(cometAddress).baseScale();
@@ -181,12 +183,12 @@ contract CometHelper {
     paymentDue = date;
   }
 
-  function setPaymentMissCounter(uint value) public onlyDeployingContract {
-    paymentMissCounter = value;
-  }
-
   function setIsOverdue(bool value) public onlyDeployingContract {
     isOverdue = value;
+  }
+
+  function setOverdueCharged(uint value) public onlyDeployingContract {
+    overdueCharged = value;
   }
  
   // /*

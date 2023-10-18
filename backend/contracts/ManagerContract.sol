@@ -24,7 +24,6 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
     mapping(address => CometHelper) public specificComets; //store user's comet contract address
     mapping(address => uint16) public creditScores; //store user's credit score
-    mapping(address => uint256) public loanDueDates; // track loan repayment dates
 
     constructor()
         SismoConnect(
@@ -202,6 +201,10 @@ contract LoanFactory is ManagerContract, ERC20, CometHelper(address(this)) { // 
         cometUser.withdrawToUser(_collateralAsset, MAX_UINT, address(this));
     }
     function overduePaymentEvent(address user, uint day) public onlyOwner {
+        require((block.timestamp-overdueCharged)/86400 >= 1, "Overdue can only be charged with 1 day intervals."); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
+        CometHelper cometUser = specificComets[msg.sender];
+        cometUser.setIsOverdue(true);
+        cometUser.setOverdueCharged(block.timestamp);
         // Downgrade credit score (depending on how many days)
     }
     function repayDueDay(address user) public onlyOwner {
@@ -225,7 +228,7 @@ contract LoanFactory is ManagerContract, ERC20, CometHelper(address(this)) { // 
         cometUser.setIsOverdue(false);
         // Create a varaible in Comet smart contract that tracks if it was repaid. 
         // We set this as true in this function
-        // We set it as false from server side everytime the health score falls below something
+        // We set it as true from server side everytime the health score falls below something
     }
 
     function repayFull() onlyBorrower public payable { 
@@ -242,5 +245,4 @@ contract LoanFactory is ManagerContract, ERC20, CometHelper(address(this)) { // 
     function totalOwed() onlyBorrower public view returns(int){
         return specificComets[msg.sender].owed(); 
     }
-
 }

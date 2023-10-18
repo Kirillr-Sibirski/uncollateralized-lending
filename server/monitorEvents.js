@@ -8,7 +8,7 @@ const privateKey = 'YOUR_PRIVATE_KEY';
 const wallet = new ethers.Wallet(privateKey);
 
 // Connect to the Ethereum network using Infura
-const infuraProvider = new ethers.providers.InfuraProvider('sepolia', infuraApiKey);
+const infuraProvider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
 
 const provider = new ethers.providers.InfuraProvider(network, infuraApiKey);
 const contract = new ethers.Contract(contractAddress, contractAbi, provider);
@@ -45,16 +45,31 @@ while (true) {
             const dateNow = await contract.checkPayment(cometAddresses[i])[0];
             const duePay = await contract.checkPayment(cometAddresses[i])[1];
             const daysPassed = (dateNow-duePay)/86400; 
-            // Somehow need to also check that if the loan was indeed repaid, we don't charge the user or something
-            if(0 > daysPassed) {
-                // overduePaymentEvent call
-                continue
-            } else if(daysPassed <= 1) { // Loan has been overdue by one day
-                // overduePaymentEvent call
-            } else if(daysPassed <= 3) { // Loan has been overdue by 3 days
-                // overduePaymentEvent call
-            } else { // Loan has been overdue by > 3 days
-                // overduePaymentEvent call
+            // If loan was repaid this won't execute but the only problem rn is that it will constantly call overdue payment function on the smart contract we need some kind of a counter.
+            if(daysPassed > 3) {
+                const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 3);
+                const transactionOptions = {
+                    gasLimit: 2000000, // Adjust the gas limit as needed
+                    gasPrice: ethers.utils.parseUnits('50', 'gwei'), // Adjust the gas price as needed
+                };
+                const txResponse = await contractFunction.send(transactionOptions);
+                await txResponse.wait();
+            } else if(daysPassed > 2) {
+                const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 2);
+                const transactionOptions = {
+                    gasLimit: 2000000, // Adjust the gas limit as needed
+                    gasPrice: ethers.utils.parseUnits('50', 'gwei'), // Adjust the gas price as needed
+                };
+                const txResponse = await contractFunction.send(transactionOptions);
+                await txResponse.wait();
+            } else {
+                const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 1);
+                const transactionOptions = {
+                    gasLimit: 2000000, // Adjust the gas limit as needed
+                    gasPrice: ethers.utils.parseUnits('50', 'gwei'), // Adjust the gas price as needed
+                };
+                const txResponse = await contractFunction.send(transactionOptions);
+                await txResponse.wait();
             }
         }
     } catch (error) {
