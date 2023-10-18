@@ -33,6 +33,7 @@ while (true) {
             const health = await contract.checkRepay(cometAddresses[i])[0];
             if(health < 15) {
                 // We send message to a user to repay the loan
+                // Set isOverdue variable in Comet as true
                 const contractFunction = contract.connect(wallet).repayDueDay(cometAddresses[i]);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed

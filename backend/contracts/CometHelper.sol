@@ -112,6 +112,7 @@ contract CometHelper {
   address public deployedContract;
   uint public paymentDue;
   uint public paymentMissCounter;
+  bool public isOverdue; 
 
   event AssetInfoLog(CometStructs.AssetInfo);
   event LogUint(string, uint);
@@ -182,6 +183,10 @@ contract CometHelper {
 
   function setPaymentMissCounter(uint value) public onlyDeployingContract {
     paymentMissCounter = value;
+  }
+
+  function setIsOverdue(bool value) public onlyDeployingContract {
+    isOverdue = value;
   }
  
   // /*

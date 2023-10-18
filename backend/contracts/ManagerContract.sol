@@ -3,70 +3,139 @@
 pragma solidity ^0.8.17;
 
 import "@sismo-core/sismo-connect-solidity/contracts/SismoConnectLib.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./CometHelper.sol";
-// Import Comet smart contract here
 
 contract ManagerContract is SismoConnect { // inherits from Sismo Connect library
     event vaultIdReceived(uint256 value1);
 
-    bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
-    address public _collateralAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
-    address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
-    mapping(address => CometHelper) public specificComets;
+    bytes16 public constant GITCOIN_PASSPORT_HOLDERS =
+        0x1cde61966decb8600dfd0749bd371f12;
+    bytes16 public constant ROCIFI_CREDIT_HOLDERS =
+        0xb3ac412738ed399acab21fbda9add42c;
+    event ResponseVerified(SismoConnectVerifiedResult result);
+    event vaultIdReceived(uint256 value1);
 
+    bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
+    // allow impersonation
+    bool private _isImpersonationMode = true; // remove later
+    address public _collateralAsset =
+        0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    mapping(address => CometHelper) public specificComets; //store user's comet contract address
+    mapping(address => uint16) public creditScores; //store user's credit score
+    mapping(address => uint256) public loanDueDates; // track loan repayment dates
 
     constructor()
-        SismoConnect(buildConfig({appId: _appId})) // <--- Sismo Connect constructor
+        SismoConnect(
+            buildConfig({
+                appId: _appId,
+                isImpersonationMode: _isImpersonationMode
+            })
+        ) // <--- Sismo Connect constructor
     {}
 
-    function estimateLoan(bytes memory sismoConnectResponse) public returns(uint16, uint256, uint16){    
-        SismoConnectVerifiedResult memory result = verify({
-            responseBytes: sismoConnectResponse,
-            auth: buildAuth({authType: AuthType.EVM_ACCOUNT}),
-            claim: buildClaim({groupId: 0x42c768bb8ae79e4c5c05d3b51a4ec74a}),
-            // we also want to check if the signed message provided in the response is the signature of the user's address
-            signature:  buildSignature({message: abi.encode(msg.sender)})
+    // frontend requests, backend verifies, but we need to recreate the request made in the fontend to verify the proof
+    function verifySismoConnectResponse(bytes memory response) public {
+        // Recreate the request made in the fontend to verify the proof
+        // We will verify the Sismo Connect Response containing the ZK Proofs against it
+        AuthRequest[] memory auths = new AuthRequest[](3);
+        auths[0] = buildAuth({authType: AuthType.VAULT});
+        auths[1] = buildAuth({authType: AuthType.EVM_ACCOUNT});
+        auths[2] = buildAuth({
+            authType: AuthType.EVM_ACCOUNT,
+            userId: uint160(0xf4165cdD056E8ff4096d21555908982F8c0696B1) // will delete
+        }); // will delete
+        ClaimRequest[] memory claims = new ClaimRequest[](2);
+        claims[0] = buildClaim({
+            // claim Gitcoin Passport Holders Data Group membership
+            groupId: GITCOIN_PASSPORT_HOLDERS,
+            claimType: ClaimType.GTE,
+            value: 20,
+            isSelectableByUser: true
+        });
+        claims[1] = buildClaim({
+            // claim Rocifi Credit Score Data Group membership
+            groupId: ROCIFI_CREDIT_HOLDERS,
+            claimType: ClaimType.GTE,
+            value: 1,
+            isSelectableByUser: true
         });
 
-        uint256 vaultId = SismoConnectHelper.getUserId(result, AuthType.EVM_ACCOUNT);
-        emit vaultIdReceived(vaultId);
-        // Sismo has been connected successfully
-        // Look up user's credit score in the Sismo data group or add user to the data group and give a default loan rate
-        uint16 creditScore = 10; // For example, we can set 10 to be the default value
-        // Based on the credit score, we calculate interest rate and borrowable amount.
-        uint256 borrowable;
-        uint16 interestRate;
-        if(creditScore <= 3) {
-            // The worst credit score
-            borrowable = 5; // USDC
-            interestRate = 200; // % per year
-        } else if (creditScore <= 10) {
-            // That's where beginners land
-            borrowable = 10; // USDC
-            interestRate = 150; // % per year
-        } else if (creditScore <= 30) {
-            borrowable = 30; // USDC
-            interestRate = 50; // % per year
-        } else if (creditScore <= 50) {
-            borrowable = 100; // USDC
-            interestRate = 30; // % per year
-        } else if (creditScore <= 70) {
-            borrowable = 200; // USDC
-            interestRate = 25; // % per year
-        } else if (creditScore <= 90) {
-            borrowable = 400; // USDC
-            interestRate = 20; // % per year
+        // verify the response regarding our original request
+        SismoConnectVerifiedResult memory result = verify({
+            // SismoConnectVerifiedResult memory result = verify(response);
+            responseBytes: response,
+            auths: auths,
+            claims: claims,
+            signature: buildSignature({message: abi.encode(msg.sender)})
+        });
+
+        // if the proofs and signed message are valid, we take the userId from the verified result
+        // in this case the userId is the vaultId (since we used AuthType.VAULT in the auth request),
+        // it is the anonymous identifier of a user's vault for a specific app
+        // --> vaultId = hash(userVaultSecret, appId)
+        uint256 vaultId = result.getUserId(AuthType.VAULT);
+        // uint256 vaultId = SismoConnectHelper.getUserId(result, AuthType.EVM_ACCOUNT);
+
+        emit ResponseVerified(result);
+
+        // Update credit score
+        uint8 rocifiValue = result.getValue(ROCIFI_CREDIT_HOLDERS);
+        uint16 newScore = calculateCreditScore(rocifiValue);
+        creditScores[msg.sender] += newScore;
+    }
+
+    function calculateCreditScore(
+        uint8 rocifiValue
+    ) private pure returns (uint16) {
+        if (rocifiValue > 7) return 0;
+        if (rocifiValue == 7 || rocifiValue == 8) return 2;
+        if (rocifiValue == 6) return 4;
+        if (rocifiValue == 5) return 5;
+        if (rocifiValue == 4) return 6;
+        if (rocifiValue == 3) return 8;
+        if (rocifiValue == 2) return 9;
+        if (rocifiValue == 1) return 10;
+        return 0;
+    }
+
+    function getCreditScore(address user) public view returns (uint16) {
+        return creditScores[user];
+    }
+
+    function estimateLoan(
+        address user
+    ) public view returns (uint16, uint256, uint256, uint256) {
+        uint16 score = getCreditScore(user);
+        uint256 interestRate;
+        uint256 loanAmount;
+        uint256 collateralAmount;
+
+        // Loan conditions based on credit score
+        if (score < 2) revert("Not eligible for loans.");
+        else if (score < 4) {
+            interestRate = 50;
+            loanAmount = 5 ether;
+            collateralAmount = (loanAmount * 150) / 100;
+        } else if (score < 5) {
+            interestRate = 20;
+            loanAmount = 5 ether;
+            collateralAmount = (loanAmount * 120) / 100;
         } else {
-            // The best credit score
-            borrowable = 1000; // USDC
-            interestRate = 15; // % per year
+            interestRate = 50 - 5 * score;
+            loanAmount = 5 ether + (score >= 9 ? 5 ether : 0);
+            collateralAmount =
+                (loanAmount * (10 >= score ? 10 - score : 0)) /
+                10;
         }
-        // It's also would be a good practice if we could check that interest rate on the Compound protocol is lower than our's so we can actually generate some money
-        return(creditScore, borrowable, interestRate);
+        return (score, interestRate, loanAmount, collateralAmount);
     }
 }
 
-contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
+contract LoanFactory is ManagerContract, ERC20, CometHelper(address(this)) { // This contract must be funded aka it is used as treasury
+    using SafeMath for uint256;
+
     ERC20 public token;
 
     event LiquidationEvent();
@@ -74,7 +143,6 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     constructor() {
         token = ERC20(_collateralAsset);
     }
-
 
     modifier onlyBorrower {
         require(address(specificComets[msg.sender]) != address(0), "User does not have an active loan.");
@@ -88,7 +156,12 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
 
     function getLoan(bytes memory sismoConnectResponse) public {
         require(address(specificComets[msg.sender]) == address(0), "User already has an active loan.");
-        (uint16 creditScore, uint256 borrowable, uint16 interestRate) = estimateLoan(sismoConnectResponse); // We estimate loan and also check that user has digital identity and meets the requirements
+        (
+            uint16 creditScore,
+            uint256 borrowable,
+            uint16 interestRate
+        ) = estimateLoan(sismoConnectResponse); // We estimate loan and also check that user has digital identity and meets the requirements
+
         uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
         require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
         CometHelper cometUser = new CometHelper(address(this));
@@ -108,20 +181,16 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     function checkRepay(address user) public view returns(int, int) { 
         CometHelper cometUser = specificComets[user];
         (int health, int repay) = cometUser.needToRepay(_collateralAsset);
-        // If health < 1.5*10, we send a message to user to repay the needed amount
-        // Also check if user hasn't repaid the amount for more than a day, we downgrade the credit score
-        return (health, repay); // Ok, we can use XMTP SDK to message the user to repay the loan but how do we downgrade credit score without changing the state?
+        return (health, repay);
     }
     function checkLiquitable(address user) public view returns(bool) {
         CometHelper cometUser = specificComets[user];
         return cometUser.liquitable();
     }
-    function checkPayment(address user) public view returns(bool) {
+    function checkPayment(address user) public view returns(uint, uint) {
         // Most likely will have to return paymentDue and current block.timestamp and check these two things off-chain, if the payment date is missed by 1 day, it's one punishment, if it's more, it's a worse punishment
         CometHelper cometUser = specificComets[user];
-        if(block.timestamp > cometUser.paymentDue()) { // If payment was overdue by 1 day
-            return true;
-        }
+        return(block.timestamp, cometUser.paymentDue());
     }
 
     /*
@@ -129,7 +198,8 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     */
     function liquidateEvent(address user) public onlyOwner {
         // Downgrade credit score (a lot)
-        // Withdraw left over collateral from Compound and back to here
+        CometHelper cometUser = specificComets[user];
+        cometUser.withdrawToUser(_collateralAsset, MAX_UINT, address(this));
     }
     function overduePaymentEvent(address user, uint day) public onlyOwner {
         // Downgrade credit score (depending on how many days)
@@ -139,19 +209,23 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
         cometUser.setRepayDue(block.timestamp+86400); // Reset the repay date
     } 
 
-
     /*
         Repay back the borrowed amount
     */
     function repayInterestRate(uint amount) onlyBorrower public payable {
+        (int health, int repay) = checkRepay(msg.sender);
         require(
             token.transferFrom(msg.sender, address(specificComets[msg.sender]), amount),
             "Transfer failed. Ensure you've approved this contract."
         );
+        require(int(amount) >= repay, "Not enough to cover the interest rate.");
         // Keep commission functionality
         specificComets[msg.sender].supply(_borrowAsset, amount);
         CometHelper cometUser = specificComets[msg.sender];
-        cometUser.setRepayDue(block.timestamp+86400); // Reset the repay date
+        cometUser.setIsOverdue(false);
+        // Create a varaible in Comet smart contract that tracks if it was repaid. 
+        // We set this as true in this function
+        // We set it as false from server side everytime the health score falls below something
     }
 
     function repayFull() onlyBorrower public payable { 
