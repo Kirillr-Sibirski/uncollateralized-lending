@@ -14,7 +14,7 @@ const provider = new ethers.providers.InfuraProvider(network, infuraApiKey);
 const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
 // Set an interval and run it every 10 sec
-while (true) {
+async function processComets() {
     try {
         const cometAddresses = await contract.specificComets.keys();
 
@@ -75,4 +75,7 @@ while (true) {
     } catch (error) {
         console.error('Error:', error);
     }
+    setTimeout(processComets, 600000); // Set it to run every 10 minutes
 }
+
+processComets();
