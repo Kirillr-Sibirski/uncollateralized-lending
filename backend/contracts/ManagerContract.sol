@@ -72,9 +72,9 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         emit ResponseVerified(result);
 
         // Update credit score
-        //uint8 rocifiValue = result.getValue(ROCIFI_CREDIT_HOLDERS);
-        //uint16 newScore = calculateCreditScore(rocifiValue);
-        //creditScores[msg.sender] += newScore;
+        // uint8 rocifiValue = result.getValue(ROCIFI_CREDIT_HOLDERS);
+        // uint16 newScore = calculateCreditScore(rocifiValue);
+        creditScores[msg.sender] = 10;
     }
 
     function calculateCreditScore(
@@ -125,8 +125,8 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
 }
 
 contract LoanFactory { // This contract must be funded aka it is used as treasury
-    address public _collateralAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
-    address public _borrowAsset = 0x3EE77595A8459e93C2888b13aDB354017B198188; // Need proper address; This is just DUMMY data
+    address public _collateralAsset = 0x3587b2F7E0E2D6166d6C14230e7Fe160252B0ba4; // Goerli COMP
+    address public _borrowAsset = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Goerli USDC
     mapping(address => CometHelper) public specificComets; //store user's comet contract address
 
     ERC20 public token = ERC20(_collateralAsset);
@@ -151,7 +151,7 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
     }
 
     function sendEtherToTreasury() public payable { // Need to make it proper collateral assets
-        uint amount = 0.02 ether; // Specify the amount in Ether
+        uint amount = 2;
         require(msg.value >= amount, "Insufficient Ether sent");
 
         // Perform any additional checks or logic if needed
