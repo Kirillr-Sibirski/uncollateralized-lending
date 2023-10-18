@@ -195,7 +195,7 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     }
     function overduePaymentEvent(address user, uint day) public onlyOwner {
         require((block.timestamp-overdueCharged)/86400 >= 1, "Overdue can only be charged with 1 day intervals."); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
-        CometHelper cometUser = specificComets[msg.sender];
+        CometHelper cometUser = specificComets[user];
         cometUser.setIsOverdue(true);
         cometUser.setOverdueCharged(block.timestamp);
         // Downgrade credit score (depending on how many days)
@@ -210,32 +210,32 @@ contract LoanFactory is ManagerContract, CometHelper(address(this)) { // This co
     */
     function repayInterestRate(uint amount) onlyBorrower public payable {
         (int health, int repay) = checkRepay(msg.sender);
+        require(int(amount) >= repay, "Not enough to cover the interest rate.");
         require(
-            token.transferFrom(msg.sender, address(specificComets[msg.sender]), amount),
+            token.transferFrom(msg.sender, address(this), amount),
             "Transfer failed. Ensure you've approved this contract."
         );
-        require(int(amount) >= repay, "Not enough to cover the interest rate.");
-        // Keep commission functionality
-        specificComets[msg.sender].supply(_borrowAsset, amount);
+
+        token.transferFrom(address(this), address(specificComets[msg.sender]), amount/2);
+
+        specificComets[msg.sender].supply(_borrowAsset, amount/2);
         CometHelper cometUser = specificComets[msg.sender];
         cometUser.setIsOverdue(false);
-        // Create a varaible in Comet smart contract that tracks if it was repaid. 
-        // We set this as true in this function
-        // We set it as true from server side everytime the health score falls below something
     }
 
     function repayFull() onlyBorrower public payable { 
         int owedAmount = owed();
-
         require(
-            token.transferFrom(msg.sender, address(specificComets[msg.sender]), uint(owedAmount)),
+            token.transferFrom(msg.sender, address(this), uint(owedAmount)), // With full commission
             "Transfer failed. Ensure you've approved this contract."
         );
+
+        token.transferFrom(address(this), address(specificComets[msg.sender]), uint(owedAmount/2));
         specificComets[msg.sender].repayFullBorrow(_borrowAsset, _collateralAsset);
         delete specificComets[msg.sender]; 
     }
 
     function totalOwed() onlyBorrower public view returns(int){
-        return specificComets[msg.sender].owed(); 
+        return specificComets[msg.sender].owed()*2; // With 50% commission 
     }
 }

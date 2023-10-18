@@ -172,7 +172,7 @@ contract CometHelper {
 
   function owed() public view returns(int104) {
     int104 owedAmount = Comet(cometAddress).userBasic(address(this)).principal;
-    return owedAmount;
+    return owedAmount*2; // With commission
   }
 
   function liquitable() public view returns(bool) {
