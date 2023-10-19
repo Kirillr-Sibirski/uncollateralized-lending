@@ -114,7 +114,7 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
             loanAmount = (5 * 10^6);
             collateralAmount = (loanAmount * 120) / 100;
         } else {
-            interestRate = 50 - 5 * score;
+            interestRate = 50 - 5 * score; // If credit score >10, interest rate will be negative
             loanAmount = (5 * 10^6) + (score >= 9 ? (5 * 10^6) : 0);
             collateralAmount =
                 (loanAmount * (10 >= score ? 10 - score : 0)) /
@@ -181,10 +181,14 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         uint compTokenPrice = cometUser.getCompoundPrice(priceFeedAddr); // returned in * 10^8
         // Convert loan amount in USDC to collateral amount in COMP token.
         uint collateralAmount = (borrowable * (compTokenPrice/100)) * 2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
-        require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
+        require (token.balanceOf(address(this)) >= collateralAmount, "Not enough funds in the factory contract.");
         require(token.transfer(address(cometUser), collateralAmount)); // "Token transfer to user's treasury failed."
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
         cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury
+    }
+
+    function getCollateralBalance() public view returns(uint) {
+        return token.balanceOf(address(this));
     }
 
     /*
