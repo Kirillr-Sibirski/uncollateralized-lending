@@ -100,22 +100,22 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     ) public view returns (uint16, uint256, uint256, uint256) {
         uint16 score = getCreditScore(user);
         uint256 interestRate;
-        uint256 loanAmount;
-        uint256 collateralAmount;
+        uint256 loanAmount; // in USDC
+        uint256 collateralAmount; // in USDC, both in * 10^6
 
         // Loan conditions based on credit score
         if (score < 2) revert("Not eligible for loans.");
         else if (score < 4) {
             interestRate = 50;
-            loanAmount = 5 ether;
-            collateralAmount = (loanAmount * 150) / 100;
+            loanAmount = (5 * 10^6);  //$5 all of them, for testing purposes
+            collateralAmount = (loanAmount * 150) / 100; 
         } else if (score < 5) {
             interestRate = 20;
-            loanAmount = 5 ether;
+            loanAmount = (5 * 10^6);
             collateralAmount = (loanAmount * 120) / 100;
         } else {
             interestRate = 50 - 5 * score;
-            loanAmount = 5 ether + (score >= 9 ? 5 ether : 0);
+            loanAmount = (5 * 10^6) + (score >= 9 ? (5 * 10^6) : 0);
             collateralAmount =
                 (loanAmount * (10 >= score ? 10 - score : 0)) /
                 10;
@@ -169,16 +169,19 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
             ,
             ,
             uint256 borrowable,
-            uint256 collateral
+            uint256 downPayment
         ) = manager.estimateLoan(msg.sender); // We estimate loan and also check that user has digital identity and meets the requirements
         require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
-            token.transferFrom(msg.sender, address(this), collateral)
+            token.transferFrom(msg.sender, address(this), downPayment) // Down payment
             // "Transfer failed. Ensure you've approved this contract."
         );
-        uint collateralAmount = borrowable*2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
-        require (address(this).balance >= collateralAmount); // "Not enough funds in the factory contract."
         CometHelper cometUser = new CometHelper(address(this));
         specificComets[msg.sender] = cometUser;
+        address priceFeedAddr = cometUser.getPriceFeedAddress(_collateralAsset);
+        uint compTokenPrice = cometUser.getCompoundPrice(priceFeedAddr); // returned in * 10^8
+        // Convert loan amount in USDC to collateral amount in COMP token.
+        uint collateralAmount = (borrowable * (compTokenPrice/100)) * 2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+        require (address(this).balance >= collateralAmount, "Not enough funds in the factory contract.");
         require(token.transfer(address(cometUser), collateralAmount)); // "Token transfer to user's treasury failed."
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
         cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury

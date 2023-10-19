@@ -294,10 +294,10 @@ contract CometHelper {
   /*
    * Get the price feed address for an asset
    */
-  // function getPriceFeedAddress(address asset) public view returns (address) {
-  //   Comet comet = Comet(cometAddress);
-  //   return comet.getAssetInfoByAddress(asset).priceFeed;
-  // }
+  function getPriceFeedAddress(address asset) public view returns (address) {
+    Comet comet = Comet(cometAddress);
+    return comet.getAssetInfoByAddress(asset).priceFeed;
+  }
 
   /*
    * Get the price feed address for the base token
@@ -310,10 +310,10 @@ contract CometHelper {
   /*
    * Get the current price of an asset from the protocol's persepctive
    */
-  // function getCompoundPrice(address singleAssetPriceFeed) public view returns (uint) {
-  //   Comet comet = Comet(cometAddress);
-  //   return comet.getPrice(singleAssetPriceFeed);
-  // }
+  function getCompoundPrice(address singleAssetPriceFeed) public view returns (uint) {
+    Comet comet = Comet(cometAddress);
+    return comet.getPrice(singleAssetPriceFeed);
+  }
 
   /*
    * Gets the amount of reward tokens due to this contract address
