@@ -95,7 +95,7 @@ function App() {
             },
           ]}
           // request message signature from users.
-          signature={{ message: signMessage(address) }}
+          signature={{ message: "I approve that I'm a human and I'm unique." }}
           // signature={{ message: "I approve that I'm a human and I'm unique." }}
           // retrieve the Sismo Connect Response from the user's Sismo data vault
           onResponseBytes={(response) => {
@@ -103,7 +103,6 @@ function App() {
             callSismoContract(response);
             //    call your contract/backend with the response as bytes
           }}
-          text={"I approve that I'm a human and I'm unique."}
         />
       </header>
     </div>

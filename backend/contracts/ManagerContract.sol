@@ -5,7 +5,9 @@ pragma solidity ^0.8.17;
 import "@sismo-core/sismo-connect-solidity/contracts/SismoConnectLib.sol";
 import "./CometHelper.sol";
 
-contract ManagerContract is SismoConnect { // inherits from Sismo Connect library
+contract ManagerContract is
+    SismoConnect // inherits from Sismo Connect library
+{
     bytes16 public constant GITCOIN_PASSPORT_HOLDERS =
         0x1cde61966decb8600dfd0749bd371f12;
     bytes16 public constant ROCIFI_CREDIT_HOLDERS =
@@ -19,8 +21,6 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
 
     mapping(uint256 => uint16) public vaultIdToCreditScore; // Vault ID to credit score
 
-    
-
     constructor()
         SismoConnect(
             buildConfig({
@@ -31,7 +31,9 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     {}
 
     // frontend requests, backend verifies, but we need to recreate the request made in the fontend to verify the proof
-    function verifySismoConnectResponse(bytes memory response) public returns(uint) {
+    function verifySismoConnectResponse(
+        bytes memory response
+    ) public returns (uint) {
         // Recreate the request made in the fontend to verify the proof
         // We will verify the Sismo Connect Response containing the ZK Proofs against it
         AuthRequest[] memory auths = new AuthRequest[](1);
@@ -57,7 +59,11 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
             responseBytes: response,
             auths: auths,
             claims: claims,
-            signature: buildSignature({message: abi.encode(msg.sender)})
+            signature: _signatureBuilder.build({
+                message: abi.encode(
+                    "I approve that I'm a human and I'm unique."
+                )
+            })
         });
 
         // if the proofs and signed message are valid, we take the userId from the verified result
@@ -127,23 +133,25 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         if (score < 2) revert("Not eligible for loans.");
         else if (score < 4) {
             interestRate = 50;
-            loanAmount = (5 * (10**18));  //$5 all of them, for testing purposes
-            collateralAmount = (2 * (10**18)); //$2 all of them, for testing purposes
+            loanAmount = (5 * (10 ** 18)); //$5 all of them, for testing purposes
+            collateralAmount = (2 * (10 ** 18)); //$2 all of them, for testing purposes
         } else if (score < 5) {
             interestRate = 20;
-            loanAmount = (5 * (10**18));
-            collateralAmount = (2 * (10**18));
+            loanAmount = (5 * (10 ** 18));
+            collateralAmount = (2 * (10 ** 18));
         } else {
             interestRate = 10;
-            loanAmount = (5 * (10**18));
-            collateralAmount = (2 * (10**18));
+            loanAmount = (5 * (10 ** 18));
+            collateralAmount = (2 * (10 ** 18));
         }
         return (score, interestRate, loanAmount, collateralAmount);
     }
 }
 
-contract LoanFactory { // This contract must be funded aka it is used as treasury
-    address public _collateralAsset = 0x3587b2F7E0E2D6166d6C14230e7Fe160252B0ba4; // Goerli COMP
+contract LoanFactory {
+    // This contract must be funded aka it is used as treasury
+    address public _collateralAsset =
+        0x3587b2F7E0E2D6166d6C14230e7Fe160252B0ba4; // Goerli COMP
     address public _borrowAsset = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Goerli USDC
     mapping(address => CometHelper) public specificComets; //store user's comet contract address
 
@@ -158,12 +166,12 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         Owner = msg.sender;
     }
 
-    modifier onlyBorrower {
+    modifier onlyBorrower() {
         require(address(specificComets[msg.sender]) != address(0)); // "User does not have an active loan."
         _;
     }
 
-    modifier onlyOwner {
+    modifier onlyOwner() {
         require(msg.sender == Owner); // "Caller doesn't have enough permissions."
         _;
     }
@@ -172,12 +180,9 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         ManagerContract manager = ManagerContract(_ManagerContract);
         require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
         uint vaultId = manager.verifySismoConnectResponse(response);
-        (
-            ,
-            ,
-            uint256 borrowable,
-            uint256 downPayment
-        ) = manager.estimateLoan(vaultId); // We estimate loan and also check that user has digital identity and meets the requirements
+        (, , uint256 borrowable, uint256 downPayment) = manager.estimateLoan(
+            vaultId
+        ); // We estimate loan and also check that user has digital identity and meets the requirements
         require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
             token.transferFrom(msg.sender, address(this), downPayment) // Down payment
             // "Transfer failed. Ensure you've approved this contract."
@@ -186,8 +191,14 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         specificComets[msg.sender] = cometUser;
 
         uint collateralAmount = getBorrowable(borrowable, cometUser);
-        require (token.balanceOf(address(this)) >= collateralAmount, "Not enough funds in the factory contract.");
-        require(token.transfer(address(cometUser), collateralAmount), "Token transfer to user's treasury failed.");
+        require(
+            token.balanceOf(address(this)) >= collateralAmount,
+            "Not enough funds in the factory contract."
+        );
+        require(
+            token.transfer(address(cometUser), collateralAmount),
+            "Token transfer to user's treasury failed."
+        );
 
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral, COMP * 10^18
         cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury, USDC * 10^6
@@ -198,22 +209,26 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
     event setBorrowableScaled(uint);
     event setCompoundCoverted(uint);
 
-    function getBorrowable(uint borrowable, CometHelper cometUser) private returns(uint){
+    function getBorrowable(
+        uint borrowable,
+        CometHelper cometUser
+    ) private returns (uint) {
         address priceFeedAddr = cometUser.getPriceFeedAddress(_collateralAsset);
         uint compTokenPrice = cometUser.getCompoundPrice(priceFeedAddr); // returned in * 10^8
         emit setCompTokenPrice(compTokenPrice);
-        
-        uint borrowableScaled = borrowable*2;
+
+        uint borrowableScaled = borrowable * 2;
         emit setBorrowableScaled(borrowableScaled);
-        uint compoundConverted = compTokenPrice*(10**10);
+        uint compoundConverted = compTokenPrice * (10 ** 10);
         emit setCompoundCoverted(compoundConverted);
 
-        uint collateralAmount = (borrowableScaled/compoundConverted)*(10**18); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+        uint collateralAmount = (borrowableScaled / compoundConverted) *
+            (10 ** 18); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
         emit collateralAmountSet(collateralAmount);
         return collateralAmount;
     }
 
-    function getCollateralBalance() public view returns(uint) {
+    function getCollateralBalance() public view returns (uint) {
         return token.balanceOf(address(this));
     }
 
@@ -224,18 +239,20 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         more efficient.
         These 3 functions are going to be monitored off-chain (node.js server).
     */
-    function checkRepay(address user) public view returns(int, int) { 
+    function checkRepay(address user) public view returns (int, int) {
         CometHelper cometUser = specificComets[user];
         (int health, int repay) = cometUser.needToRepay(_collateralAsset);
         return (health, repay);
     }
-    function checkLiquitable(address user) public view returns(bool) {
+
+    function checkLiquitable(address user) public view returns (bool) {
         CometHelper cometUser = specificComets[user];
         return cometUser.liquitable();
     }
-    function checkPayment(address user) public view returns(uint, uint) {
+
+    function checkPayment(address user) public view returns (uint, uint) {
         CometHelper cometUser = specificComets[user];
-        return(block.timestamp, cometUser.paymentDue());
+        return (block.timestamp, cometUser.paymentDue());
     }
 
     /*
@@ -246,49 +263,59 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         CometHelper cometUser = specificComets[user];
         cometUser.liquidate(_collateralAsset, address(this));
     }
+
     function overduePaymentEvent(address user, uint day) public onlyOwner {
         CometHelper cometUser = specificComets[user];
         // "Overdue can only be charged with 1 day intervals."
-        require((block.timestamp-cometUser.overdueCharged())/86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
+        require((block.timestamp - cometUser.overdueCharged()) / 86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
         cometUser.setIsOverdue(true);
         cometUser.setOverdueCharged(block.timestamp);
         // Downgrade credit score (depending on how many days)
     }
+
     function repayDueDay(address user) public onlyOwner {
         CometHelper cometUser = specificComets[user];
-        cometUser.setRepayDue(block.timestamp+86400); // Reset the repay date
-    } 
+        cometUser.setRepayDue(block.timestamp + 86400); // Reset the repay date
+    }
 
     /*
         Repay back the borrowed amount
     */
-    function repayInterestRate() onlyBorrower public payable {
+    function repayInterestRate() public payable onlyBorrower {
         (, int amount) = checkRepay(msg.sender);
         require(
             token.transferFrom(msg.sender, address(this), uint(amount)) // "Transfer failed. Ensure you've approved this contract."
         );
 
-        token.transferFrom(address(this), address(specificComets[msg.sender]), uint(amount)/2);
+        token.transferFrom(
+            address(this),
+            address(specificComets[msg.sender]),
+            uint(amount) / 2
+        );
 
-        specificComets[msg.sender].supply(_borrowAsset, uint(amount)/2);
+        specificComets[msg.sender].supply(_borrowAsset, uint(amount) / 2);
         CometHelper cometUser = specificComets[msg.sender];
         cometUser.setIsOverdue(false);
     }
 
-    function repayFull() onlyBorrower public payable { 
+    function repayFull() public payable onlyBorrower {
         CometHelper cometUser = specificComets[msg.sender];
         int owedAmount = cometUser.owed();
         require(
-            token.transferFrom(msg.sender, address(this), uint(owedAmount)) // "Transfer failed. Ensure you've approved this contract." 
+            token.transferFrom(msg.sender, address(this), uint(owedAmount)) // "Transfer failed. Ensure you've approved this contract."
             // With full commission
         );
 
-        token.transferFrom(address(this), address(cometUser), uint(owedAmount/2));
+        token.transferFrom(
+            address(this),
+            address(cometUser),
+            uint(owedAmount / 2)
+        );
         cometUser.repayFullBorrow(_borrowAsset, _collateralAsset);
-        delete cometUser; 
+        delete cometUser;
     }
 
-    function totalOwed() onlyBorrower public view returns(int){
-        return specificComets[msg.sender].owed()*2; // With 50% commission 
+    function totalOwed() public view onlyBorrower returns (int) {
+        return specificComets[msg.sender].owed() * 2; // With 50% commission
     }
 }
