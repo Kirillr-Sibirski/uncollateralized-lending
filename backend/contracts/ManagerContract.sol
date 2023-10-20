@@ -24,8 +24,8 @@ contract ManagerContract is
     constructor()
         SismoConnect(
             buildConfig({
-            _appId,
-            _isImpersonationMode
+                appId: _appId,
+                isImpersonationMode: _isImpersonationMode
             })
         ) // <--- Sismo Connect constructor
     {}
