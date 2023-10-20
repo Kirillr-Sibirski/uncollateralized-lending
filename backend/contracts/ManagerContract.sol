@@ -127,18 +127,16 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         if (score < 2) revert("Not eligible for loans.");
         else if (score < 4) {
             interestRate = 50;
-            loanAmount = 5 ether;
-            collateralAmount = (loanAmount * 150) / 100;
+            loanAmount = (5 * (10**18));  //$5 all of them, for testing purposes
+            collateralAmount = (2 * (10**18)); //$2 all of them, for testing purposes
         } else if (score < 5) {
             interestRate = 20;
-            loanAmount = 5 ether;
-            collateralAmount = (loanAmount * 120) / 100;
+            loanAmount = (5 * (10**18));
+            collateralAmount = (2 * (10**18));
         } else {
-            interestRate = 50 - 5 * score;
-            loanAmount = 5 ether + (score >= 9 ? 5 ether : 0);
-            collateralAmount =
-                (loanAmount * (10 >= score ? 10 - score : 0)) /
-                10;
+            interestRate = 10;
+            loanAmount = (5 * (10**18));
+            collateralAmount = (2 * (10**18));
         }
         return (score, interestRate, loanAmount, collateralAmount);
     }
@@ -186,15 +184,33 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         );
         CometHelper cometUser = new CometHelper(address(this));
         specificComets[msg.sender] = cometUser;
+
+        uint collateralAmount = getBorrowable(borrowable, cometUser);
+        require (token.balanceOf(address(this)) >= collateralAmount, "Not enough funds in the factory contract.");
+        require(token.transfer(address(cometUser), collateralAmount), "Token transfer to user's treasury failed.");
+
+        cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral, COMP * 10^18
+        cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury, USDC * 10^6
+    }
+
+    event collateralAmountSet(uint);
+    event setCompTokenPrice(uint);
+    event setBorrowableScaled(uint);
+    event setCompoundCoverted(uint);
+
+    function getBorrowable(uint borrowable, CometHelper cometUser) private returns(uint){
         address priceFeedAddr = cometUser.getPriceFeedAddress(_collateralAsset);
         uint compTokenPrice = cometUser.getCompoundPrice(priceFeedAddr); // returned in * 10^8
-        // Convert loan amount in USDC to collateral amount in COMP token.
+        emit setCompTokenPrice(compTokenPrice);
+        
+        uint borrowableScaled = borrowable*2;
+        emit setBorrowableScaled(borrowableScaled);
+        uint compoundConverted = compTokenPrice*(10**10);
+        emit setCompoundCoverted(compoundConverted);
 
-        uint collateralAmount = (borrowable*2)*(compTokenPrice*10**10); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
-        require (token.balanceOf(address(this)) >= collateralAmount, "Not enough funds in the factory contract.");
-        require(token.transfer(address(cometUser), collateralAmount)); // "Token transfer to user's treasury failed."
-        cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
-        cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury
+        uint collateralAmount = (borrowableScaled/compoundConverted)*(10**18); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+        emit collateralAmountSet(collateralAmount);
+        return collateralAmount;
     }
 
     function getCollateralBalance() public view returns(uint) {
