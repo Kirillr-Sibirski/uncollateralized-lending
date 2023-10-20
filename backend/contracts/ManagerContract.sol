@@ -201,7 +201,7 @@ contract LoanFactory {
         );
 
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral, COMP * 10^18
-        cometUser.withdrawToUser(_borrowAsset, borrowable, msg.sender); // We get the borrowed amount to user's treasury, USDC * 10^6
+        cometUser.withdrawToUser(_borrowAsset, (borrowable/(10**12)), msg.sender); // We get the borrowed amount to user's treasury, USDC * 10^6
     }
 
     event collateralAmountSet(uint);
