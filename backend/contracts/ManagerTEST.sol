@@ -16,18 +16,11 @@ contract ManagerContract is
     event vaultIdReceived(uint256 value1);
 
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
-    // allow impersonation
-    bool private _isImpersonationMode = true; // remove later
-    mapping(address => uint256) public userToVaultId; // Ethereum address to Vault ID
-    mapping(address => uint16) public creditScores; //store user's credit score
+
+    mapping(uint256 => uint16) public vaultIdToCreditScore; // Vault ID to credit score
 
     constructor()
-        SismoConnect(
-            buildConfig({
-                appId: _appId,
-                isImpersonationMode: _isImpersonationMode
-            })
-        ) // <--- Sismo Connect constructor
+        SismoConnect(buildConfig({appId: _appId})) // <--- Sismo Connect constructor
     {}
 
     // frontend requests, backend verifies, but we need to recreate the request made in the fontend to verify the proof
@@ -47,7 +40,6 @@ contract ManagerContract is
         claims[1] = buildClaim({
             // claim Rocifi Credit Score Data Group membership
             groupId: ROCIFI_CREDIT_HOLDERS,
-            // the value can be selected by the user to gain more tokens
             isSelectableByUser: true,
             // this proof of group membership optional
             isOptional: true
@@ -66,12 +58,16 @@ contract ManagerContract is
         // it is the anonymous identifier of a user's vault for a specific app
         // --> vaultId = hash(userVaultSecret, appId)
         uint256 vaultId = SismoConnectHelper.getUserId(result, AuthType.VAULT);
-        userToVaultId[msg.sender] = vaultId;
-        emit vaultIdReceived(vaultId);
-        // each vaultId can claim points relatively to their aggregated reputation
+        // Check if this vaultId has already been used to claim points
+        require(
+            vaultIdToCreditScore[vaultId] == 0,
+            "VaultId has already been used to claim points."
+        );
+        // assign points to the vaultId directly
         uint256 pointAmount = getPointAmount(result);
-        creditScores[msg.sender] = uint16(pointAmount);
+        vaultIdToCreditScore[vaultId] = uint16(pointAmount);
 
+        emit vaultIdReceived(vaultId);
         emit ResponseVerified(result);
     }
 
@@ -112,9 +108,9 @@ contract ManagerContract is
     }
 
     function estimateLoan(
-        address user
+        uint256 vaultId
     ) public view returns (uint16, uint256, uint256, uint256) {
-        uint16 score = creditScores(user);
+        uint16 score = vaultIdToCreditScore[vaultId];
         uint256 interestRate;
         uint256 loanAmount;
         uint256 collateralAmount;
@@ -181,15 +177,15 @@ contract LoanFactory is ManagerContract {
         // You can now perform any additional logic or emit events related to the Ether transfer.
     }
 
-    function getLoan() public {
+    function getLoan(uint256 vaultId) public {
         ManagerContract manager = ManagerContract(_ManagerContract);
         require(
-            userToVaultId[msg.sender] != 0,
+            vaultIdToCreditScore[vaultId] != 0,
             "User is not verified with Sismo"
         );
         require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
         (, , uint256 borrowable, uint256 collateral) = manager.estimateLoan(
-            msg.sender
+            vaultId
         ); // We estimate loan and also check that user has digital identity and meets the requirements
         require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
             token.transferFrom(msg.sender, address(this), collateral)
@@ -236,7 +232,8 @@ contract LoanFactory is ManagerContract {
         cometUser.liquidate(_collateralAsset, address(this));
     }
 
-    function overduePaymentEvent(address user, uint day) public onlyOwner {
+    function overduePaymentEvent(address user) public onlyOwner {
+        // uint day
         CometHelper cometUser = specificComets[user];
         // "Overdue can only be charged with 1 day intervals."
         require((block.timestamp - cometUser.overdueCharged()) / 86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
