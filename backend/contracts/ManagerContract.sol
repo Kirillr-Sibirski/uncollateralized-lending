@@ -264,7 +264,7 @@ contract LoanFactory {
         cometUser.liquidate(_collateralAsset, address(this));
     }
 
-    function overduePaymentEvent(address user, uint day) public onlyOwner {
+    function overduePaymentEvent(address user /*uint day*/) public onlyOwner {
         CometHelper cometUser = specificComets[user];
         // "Overdue can only be charged with 1 day intervals."
         require((block.timestamp - cometUser.overdueCharged()) / 86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
