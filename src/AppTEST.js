@@ -46,14 +46,6 @@ function App() {
 
   const config = {
     appId: "0x70fa08c440c103a75df7bb076c84b99f",
-    vault: {
-      // For development purposes insert the Data Sources that you want to impersonate
-      // Never use this in production
-      impersonate: [
-        // EVM Data Source,  delete later
-        "0xf4165cdD056E8ff4096d21555908982F8c0696B1",
-      ],
-    },
     displayRawResponse: true, // this enables you to get access directly to the
     // Sismo Connect Response in the vault instead of redirecting back to the app
   };
@@ -79,12 +71,6 @@ function App() {
             // full docs: https://docs.sismo.io/sismo-docs/build-with-sismo-connect/technical-documentation/vault-and-proof-identifiers
             // user is required to prove ownership of their vaultId for this appId
             { authType: AuthType.VAULT },
-            // user is required to prove ownership of an EVM account from their vault
-            { authType: AuthType.EVM_ACCOUNT },
-            {
-              authType: AuthType.EVM_ACCOUNT,
-              userId: "0xf4165cdD056E8ff4096d21555908982F8c0696B1", // impersonated, delete later
-            },
           ]}
           // Claims = prove group membership of a Data Source in a specific Data Group.
           // Data Groups = [{[dataSource1]: value1}, {[dataSource1]: value1}, .. {[dataSource]: value}]
@@ -94,20 +80,18 @@ function App() {
               // claim Gitcoin Passport Holders Data Group membership: https://factory.sismo.io/groups-explorer?search=0x1cde61966decb8600dfd0749bd371f12
               // Data Group members          = Gitcoin Passport Holders
               // value for each group member = Gitcoin Passport Score
-              // request user to prove membership in the group with value > 20, user can reveal more if they want
+              // request user to prove membership in the group with value > 20
               groupId: "GITCOIN_PASSPORT_HOLDERS",
-              claimType: ClaimType.GTE,
               value: 20,
-              isSelectableByUser: true, // can reveal more than 20 if they want
+              claimType: ClaimType.GTE,
             },
             {
               // claim Rocifi Credit Score Data Group membership: https://factory.sismo.io/groups-explorer?search=0xb3ac412738ed399acab21fbda9add42c
               // Data Group members          = eth addresses scored by Rocifi
               // value for each group member = Rocifi Credit Score 1-10
               groupId: "ROCIFI_CREDIT_HOLDERS",
-              claimType: ClaimType.GTE,
-              value: 1, // credit score of at least 1, value will determine points added to our generated credit score
               isSelectableByUser: true, // can reveal more than 1 if they want
+              isOptional: true,
             },
           ]}
           // request message signature from users.
