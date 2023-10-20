@@ -16,7 +16,8 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
     // allow impersonation
     bool private _isImpersonationMode = true; // remove later
-    mapping(address => uint16) public creditScores; //store user's credit score
+
+    mapping(uint256 => uint16) public vaultIdToCreditScore; // Vault ID to credit score
 
     
 
@@ -30,16 +31,12 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
     {}
 
     // frontend requests, backend verifies, but we need to recreate the request made in the fontend to verify the proof
-    function verifySismoConnectResponse(bytes memory response) public {
+    function verifySismoConnectResponse(bytes memory response) public returns(uint) {
         // Recreate the request made in the fontend to verify the proof
         // We will verify the Sismo Connect Response containing the ZK Proofs against it
-        AuthRequest[] memory auths = new AuthRequest[](3);
+        AuthRequest[] memory auths = new AuthRequest[](1);
         auths[0] = buildAuth({authType: AuthType.VAULT});
-        auths[1] = buildAuth({authType: AuthType.EVM_ACCOUNT});
-        auths[2] = buildAuth({
-            authType: AuthType.EVM_ACCOUNT,
-            userId: uint160(0xf4165cdD056E8ff4096d21555908982F8c0696B1) // will delete
-        }); // will delete
+
         ClaimRequest[] memory claims = new ClaimRequest[](2);
         claims[0] = buildClaim({
             // claim Gitcoin Passport Holders Data Group membership
@@ -50,13 +47,13 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         claims[1] = buildClaim({
             // claim Rocifi Credit Score Data Group membership
             groupId: ROCIFI_CREDIT_HOLDERS,
-            claimType: ClaimType.GTE,
-            value: 1
+            isSelectableByUser: true,
+            // this proof of group membership optional
+            isOptional: true
         });
 
         // verify the response regarding our original request
         SismoConnectVerifiedResult memory result = verify({
-            // SismoConnectVerifiedResult memory result = verify(response);
             responseBytes: response,
             auths: auths,
             claims: claims,
@@ -68,54 +65,77 @@ contract ManagerContract is SismoConnect { // inherits from Sismo Connect librar
         // it is the anonymous identifier of a user's vault for a specific app
         // --> vaultId = hash(userVaultSecret, appId)
         uint256 vaultId = SismoConnectHelper.getUserId(result, AuthType.VAULT);
+        // Check if this vaultId has already been used to claim points
+        require(
+            vaultIdToCreditScore[vaultId] == 0,
+            "VaultId has already been used to claim points."
+        );
+        // assign points to the vaultId directly
+        uint256 pointAmount = getPointAmount(result);
+        vaultIdToCreditScore[vaultId] = uint16(pointAmount);
 
+        emit vaultIdReceived(vaultId);
         emit ResponseVerified(result);
-
-        // Update credit score
-        // uint8 rocifiValue = result.getValue(ROCIFI_CREDIT_HOLDERS);
-        // uint16 newScore = calculateCreditScore(rocifiValue);
-        creditScores[msg.sender] = 10;
+        return vaultId;
     }
 
-    function calculateCreditScore(
-        uint8 rocifiValue
-    ) private pure returns (uint16) {
-        if (rocifiValue > 7) return 0;
-        if (rocifiValue == 7 || rocifiValue == 8) return 2;
-        if (rocifiValue == 6) return 4;
-        if (rocifiValue == 5) return 5;
-        if (rocifiValue == 4) return 6;
-        if (rocifiValue == 3) return 8;
-        if (rocifiValue == 2) return 9;
-        if (rocifiValue == 1) return 10;
-        return 0;
-    }
-
-    function getCreditScore(address user) public view returns (uint16) {
-        return creditScores[user];
+    function getPointAmount(
+        SismoConnectVerifiedResult memory result
+    ) private pure returns (uint256) {
+        uint256 pointAmount = 0;
+        uint256 POINT_BASE_VALUE = 1 * 10 ** 18; // 1 point
+        // we iterate over the verified claims in the result
+        for (uint i = 0; i < result.claims.length; i++) {
+            bytes16 groupId = result.claims[i].groupId;
+            uint256 value = result.claims[i].value;
+            if (groupId == ROCIFI_CREDIT_HOLDERS) {
+                // for ROCIFI_CREDIT_HOLDERS, the value is your credit score
+                if (value > 8) {
+                    pointAmount += 0;
+                } else if (value == 7 || value == 8) {
+                    pointAmount += 2;
+                } else if (value == 6) {
+                    pointAmount += 4;
+                } else if (value == 5) {
+                    pointAmount += 5;
+                } else if (value == 4) {
+                    pointAmount += 6;
+                } else if (value == 3) {
+                    pointAmount += 8;
+                } else if (value == 2) {
+                    pointAmount += 9;
+                } else if (value == 1) {
+                    pointAmount += 10;
+                }
+            } else {
+                // for all other groups, the value is 1 point
+                pointAmount += POINT_BASE_VALUE;
+            }
+        }
+        return pointAmount;
     }
 
     function estimateLoan(
-        address user
+        uint256 vaultId
     ) public view returns (uint16, uint256, uint256, uint256) {
-        uint16 score = getCreditScore(user);
+        uint16 score = vaultIdToCreditScore[vaultId];
         uint256 interestRate;
-        uint256 loanAmount; // in USDC
-        uint256 collateralAmount; // in USDC, both in * 10^6
+        uint256 loanAmount;
+        uint256 collateralAmount;
 
         // Loan conditions based on credit score
         if (score < 2) revert("Not eligible for loans.");
         else if (score < 4) {
             interestRate = 50;
-            loanAmount = (5 * 10^6);  //$5 all of them, for testing purposes
-            collateralAmount = (loanAmount * 150) / 100; 
+            loanAmount = 5 ether;
+            collateralAmount = (loanAmount * 150) / 100;
         } else if (score < 5) {
             interestRate = 20;
-            loanAmount = (5 * 10^6);
+            loanAmount = 5 ether;
             collateralAmount = (loanAmount * 120) / 100;
         } else {
-            interestRate = 50 - 5 * score; // If credit score >10, interest rate will be negative
-            loanAmount = (5 * 10^6) + (score >= 9 ? (5 * 10^6) : 0);
+            interestRate = 50 - 5 * score;
+            loanAmount = 5 ether + (score >= 9 ? 5 ether : 0);
             collateralAmount =
                 (loanAmount * (10 >= score ? 10 - score : 0)) /
                 10;
@@ -150,27 +170,16 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         _;
     }
 
-    function sendEtherToTreasury() public payable { // Need to make it proper collateral assets
-        uint amount = 2;
-        require(msg.value >= amount, "Insufficient Ether sent");
-
-        // Perform any additional checks or logic if needed
-
-        // Transfer the Ether to the treasury address (address of this contract)
-        token.transfer(address(this), amount);
-
-        // You can now perform any additional logic or emit events related to the Ether transfer.
-    }
-
-    function getLoan() public {
+    function getLoan(bytes memory response) public {
         ManagerContract manager = ManagerContract(_ManagerContract);
         require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
+        uint vaultId = manager.verifySismoConnectResponse(response);
         (
             ,
             ,
             uint256 borrowable,
             uint256 downPayment
-        ) = manager.estimateLoan(msg.sender); // We estimate loan and also check that user has digital identity and meets the requirements
+        ) = manager.estimateLoan(vaultId); // We estimate loan and also check that user has digital identity and meets the requirements
         require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
             token.transferFrom(msg.sender, address(this), downPayment) // Down payment
             // "Transfer failed. Ensure you've approved this contract."
@@ -180,7 +189,8 @@ contract LoanFactory { // This contract must be funded aka it is used as treasur
         address priceFeedAddr = cometUser.getPriceFeedAddress(_collateralAsset);
         uint compTokenPrice = cometUser.getCompoundPrice(priceFeedAddr); // returned in * 10^8
         // Convert loan amount in USDC to collateral amount in COMP token.
-        uint collateralAmount = (borrowable * (compTokenPrice/100)) * 2; // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+
+        uint collateralAmount = (borrowable*2)*(compTokenPrice*10**10); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
         require (token.balanceOf(address(this)) >= collateralAmount, "Not enough funds in the factory contract.");
         require(token.transfer(address(cometUser), collateralAmount)); // "Token transfer to user's treasury failed."
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral
