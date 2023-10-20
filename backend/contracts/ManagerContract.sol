@@ -15,7 +15,7 @@ contract ManagerContract is
     event ResponseVerified(SismoConnectVerifiedResult result);
     event vaultIdReceived(uint256 value1);
 
-    bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
+    bytes16 private _appId = 0x25446088f9f356d3085b653f5beba79d;
     // allow impersonation
     bool private _isImpersonationMode = true; // remove later
 
@@ -24,8 +24,8 @@ contract ManagerContract is
     constructor()
         SismoConnect(
             buildConfig({
-                appId: _appId,
-                isImpersonationMode: _isImpersonationMode
+            _appId,
+            _isImpersonationMode
             })
         ) // <--- Sismo Connect constructor
     {}
