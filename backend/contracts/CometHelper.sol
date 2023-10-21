@@ -169,11 +169,10 @@ contract CometHelper {
       
     int repay = 0;
 
-    uint scalingFactor = 1000;
-    int targetHealthFactor = 1500; // Define a scaled target health factor (e.g., 1500 for 1.5)
+    int targetHealthFactor = 150; // Define a scaled target health factor (e.g., 1500 for 1.5)
 
-    if ((healthFactor*int(scalingFactor)) < targetHealthFactor) { 
-        uint desiredCollateral = uint(owed()) * uint(targetHealthFactor) / scalingFactor;
+    if (healthFactor < targetHealthFactor) { 
+        uint desiredCollateral = uint(owed()) * uint(targetHealthFactor) / 10;
         int collateralDeficit = int(desiredCollateral) - int(collateral);
 
         if (collateralDeficit > 0) {
