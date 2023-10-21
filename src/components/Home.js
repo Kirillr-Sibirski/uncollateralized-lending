@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 import ABI from "../contracts/ABI.json";
 import React, { useState } from "react";
 import HowItWorks from "../assets/HowItWorks.png";
-import Spark from "../assets/spark-logo.svg";
+import Compound from '../assets/compound-logo.png'
 import Sismo from "../assets/sismo-logo.png";
 import Xmtp from "../assets/xmtp-logo.svg";
 
@@ -164,9 +164,9 @@ const Home = () => {
                 style={{ marginInline: 20 }}
               />
             </a>
-            <a href="https://spark.fi/">
+            <a href="https://compound.finance/">
               <img
-                src={Spark}
+                src={Compound}
                 height={50}
                 width={90}
                 style={{ marginInline: 20 }}
