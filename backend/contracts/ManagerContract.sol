@@ -15,7 +15,7 @@ contract ManagerContract is
     event ResponseVerified(SismoConnectVerifiedResult result);
     event vaultIdReceived(uint256 value1);
 
-    bytes16 private _appId = 0xf4977993e52606cfd67b7a1cde717069;
+    bytes16 private _appId = 0x25446088f9f356d3085b653f5beba79d;
     // allow impersonation
     bool private _isImpersonationMode = true; // remove later
 
@@ -264,7 +264,7 @@ contract LoanFactory {
         cometUser.liquidate(_collateralAsset, address(this));
     }
 
-    function overduePaymentEvent(address user, uint day) public onlyOwner {
+    function overduePaymentEvent(address user /*uint day*/) public onlyOwner {
         CometHelper cometUser = specificComets[user];
         // "Overdue can only be charged with 1 day intervals."
         require((block.timestamp - cometUser.overdueCharged()) / 86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
