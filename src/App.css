@@ -57,12 +57,28 @@
 
 .loan-info{
   font-size: large;
+  color: #3466AA;
+  margin: 10px 0;
+}
+
+.loan-description{
+  font-weight: normal;
+  color: #3466AA;
+  margin: 10px 0;
+}
+
+.description{
+  font-size: large;
+  color: #3466AA;
   margin: 10px 0;
 }
 
 .content-section{
   flex: 1;
   margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .how-it-works{
@@ -71,4 +87,16 @@
 
 .powered-by{
   color: #82B7DC;
+}
+
+.repay-section{
+  display: flex;
+  flex-direction: column;
+}
+
+.amount-input{
+  padding: 12px 20px;
+  margin: 8px 0;
+  box-sizing: border-box;
+  border-radius: 10px;
 }
