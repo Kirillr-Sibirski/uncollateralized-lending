@@ -45,7 +45,7 @@ async function processComets() {
             const duePay = await contract.checkPayment(cometAddresses[i])[1];
             const daysPassed = (dateNow-duePay)/86400; 
             // If loan was repaid this won't execute but the only problem rn is that it will constantly call overdue payment function on the smart contract we need some kind of a counter.
-            if(daysPassed > 3) {
+            if(daysPassed >= 3) {
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 3);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed
@@ -53,7 +53,7 @@ async function processComets() {
                 };
                 const txResponse = await contractFunction.send(transactionOptions);
                 await txResponse.wait();
-            } else if(daysPassed > 2) {
+            } else if(daysPassed >= 2) {
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 2);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed
@@ -61,7 +61,7 @@ async function processComets() {
                 };
                 const txResponse = await contractFunction.send(transactionOptions);
                 await txResponse.wait();
-            } else {
+            } else if(daysPassed >= 1){
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 1);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed
