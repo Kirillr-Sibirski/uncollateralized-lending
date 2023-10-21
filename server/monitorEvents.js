@@ -11,10 +11,10 @@ const privateKey = process.env.PRIVATE_KEY;
 
 const contractAddress = "0x0a9D3FF1C7c07637B9C59640520Dc9989aadfd46";
 
-// Create a new wallet from the private key
-const wallet = new ethers.Wallet(privateKey);
-
 const provider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
+// Create a new wallet from the private key
+const wallet = new ethers.Wallet(privateKey, provider);
+
 const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
 // Set an interval and run it every 10 sec
@@ -31,8 +31,6 @@ async function processComets() {
             cometAddresses.push(address);
         }
 
-        console.log(cometAddresses); // The entire array of addresses
-
         for(let i = 0; i <= cometAddresses.length; i++) {
             const isLiquitable = await contract.checkLiquitable(cometAddresses[i]);// Check if liquitable
             if(isLiquitable) {
@@ -44,7 +42,9 @@ async function processComets() {
                 const txResponse = await contractFunction.send(transactionOptions);
                 await txResponse.wait();
             }
-            const health = await contract.checkRepay(cometAddresses[i])[0];
+            const hexValue = await contract.checkRepay(cometAddresses[i]);
+            const health = ethers.utils.formatUnits(hexValue[0], 0); // 0 is the number of decimal places
+
             if(health < 15) {
                 // We send message to a user to repay the loan
                 const contractFunction = contract.connect(wallet).repayDueDay(cometAddresses[i]);
@@ -55,9 +55,20 @@ async function processComets() {
                 const txResponse = await contractFunction.send(transactionOptions);
                 await txResponse.wait();
             }
-            const dateNow = await contract.checkPayment(cometAddresses[i])[0];
-            const duePay = await contract.checkPayment(cometAddresses[i])[1];
-            const daysPassed = (dateNow-duePay)/86400; 
+            const checkPaymentResult = await contract.checkPayment(cometAddresses[i]);
+            const dateNow = ethers.utils.formatUnits(checkPaymentResult[0], 0); // 0 is the number of decimal places
+            console.log(dateNow);
+            const duePay = ethers.utils.formatUnits(checkPaymentResult[1], 0); // 0 is the number of decimal places
+            console.log(duePay);
+
+            const checkIsOverdue = await contract.checkIsOverdue(cometAddresses[i]);
+
+            var daysPassed;
+            if(checkIsOverdue())
+                daysPassed = (dateNow-duePay)/86400; // Problem with this one. dateNow - 0 / day is not gonna equal to what we want
+            else
+                daysPassed = 0;
+                
             // If loan was repaid this won't execute but the only problem rn is that it will constantly call overdue payment function on the smart contract we need some kind of a counter.
             if(daysPassed >= 3) {
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 3);

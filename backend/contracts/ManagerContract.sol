@@ -284,6 +284,11 @@ contract LoanFactory {
         cometUser.setRepayDue(block.timestamp + 86400); // Reset the repay date
     }
 
+    function checkIsOverdue(address user) public view returns(bool){
+        CometHelper cometUser = specificComets[user];
+        return cometUser.isOverdue();
+    }
+
     /*
         Repay back the borrowed amount
     */
