@@ -1,16 +1,20 @@
 const { ethers } = require("ethers");
+require('dotenv').config();
+const fs = require("fs"); // Import the Node.js file system module
+
+// Load the ABI from your JSON file
+const contractAbi = JSON.parse(fs.readFileSync("./ABI.json", "utf8"))
 
 // Infura API key and your private key
-const infuraApiKey = 'YOUR_INFURA_API_KEY';
-const privateKey = 'YOUR_PRIVATE_KEY';
+const infuraApiKey = process.env.INFURA_API_KEY;
+const privateKey = process.env.PRIVATE_KEY;
+
+const contractAddress = "0xCF8631C6329E26461Ec5DE626903F022F2ee4Fad";
 
 // Create a new wallet from the private key
 const wallet = new ethers.Wallet(privateKey);
 
-// Connect to the Ethereum network using Infura
-const infuraProvider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
-
-const provider = new ethers.providers.InfuraProvider(network, infuraApiKey);
+const provider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
 const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
 // Set an interval and run it every 10 sec

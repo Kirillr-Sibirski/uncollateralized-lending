@@ -154,6 +154,7 @@ contract LoanFactory {
         0x3587b2F7E0E2D6166d6C14230e7Fe160252B0ba4; // Goerli COMP
     address public _borrowAsset = 0x07865c6E87B9F70255377e024ace6630C1Eaa37F; // Goerli USDC
     mapping(address => CometHelper) public specificComets; //store user's comet contract address
+    address[] borrowers;
 
     ERC20 public token = ERC20(_collateralAsset);
     address public Owner;
@@ -189,6 +190,7 @@ contract LoanFactory {
         );
         CometHelper cometUser = new CometHelper(address(this));
         specificComets[msg.sender] = cometUser;
+        borrowers.push(msg.sender);
 
         uint collateralAmount = getBorrowable(borrowable, cometUser);
         require(
@@ -312,7 +314,23 @@ contract LoanFactory {
             uint(owedAmount / 2)
         );
         cometUser.repayFullBorrow(_borrowAsset, _collateralAsset);
-        delete cometUser;
+        
+        uint index;
+        for (uint i = 0; i < borrowers.length; i++) {
+            if (borrowers[i] == msg.sender) {
+                index = i;
+                break;
+            }
+        }
+
+        // Remove the user's address from the borrowers array.
+        if (index < borrowers.length) {
+            borrowers[index] = borrowers[borrowers.length - 1];
+            borrowers.pop();
+        }
+
+        // Delete the mapping entry.
+        delete specificComets[msg.sender];
     }
 
     function totalOwed() public view onlyBorrower returns (int) {
