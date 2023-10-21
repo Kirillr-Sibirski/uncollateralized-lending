@@ -51,7 +51,7 @@ async function processComets() {
                 await txResponse.wait();
             }
             const hexValue = await contract.checkRepay(cometAddresses[i]);
-            const health = 10;//ethers.utils.formatUnits(hexValue[0], 0); // 0 is the number of decimal places
+            const health = ethers.utils.formatUnits(hexValue[0], 0); // 0 is the number of decimal places
 
             if(health < 15) {
                 // Define the transaction details
