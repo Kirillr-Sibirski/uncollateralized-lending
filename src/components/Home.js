@@ -19,11 +19,12 @@ const Home = () => {
 
   const [loanAmount, setLoanAmount] = useState(0)
   const [loanInterest, setLoanInterest] = useState(0)
-  const [showLoan, setShowLoan] = useState(false)
-  const [loanExists, setLoanExists] = useState(true)
+  const [showLoan, setShowLoan] = useState(true)
+  const [loanExists, setLoanExists] = useState(false)
   const [loanInterestAmount, setLoanInterestAmount] = useState(0)
   const [amountPaid, setAmountPaid] = useState(0)
   const [amount, setAmount] = useState(0)
+  const [collateralAmount, setCollateralAmount] = useState(0)
 
   const handleConnectWallet = async () => {
     try {
@@ -264,6 +265,11 @@ const Home = () => {
                 <span className="loan-info">
                   Interest rate: {loanInterest}% p.a.
                 </span>
+                <span className="loan-info">Collateral Amount: {collateralAmount}</span>
+                <span className="loan-description">
+                  {collateralAmount 
+                  ? "You don't have the required trust score yet for a collateral free loan"
+                  : "Yay! You are eligible for a collateral free loan"}</span>
               </div>
             ) : (
               <p className="description">
