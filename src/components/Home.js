@@ -65,7 +65,10 @@ const Home = () => {
     vault: {
       // For development purposes insert the identifier that you want to impersonate here
       // Never use this in production
-      impersonate: ["0xf4165cdD056E8ff4096d21555908982F8c0696B1"],
+      impersonate: [
+        "0x4b83c3caf46c82a2c755242732a28fd296a9db4b",
+        "0xa3a7b6a06b128be64a099c7fed49d778008eb48a",
+      ],
     },
     displayRawResponse: true, // this enables you to get access directly to the
     // Sismo Connect Response in the vault instead of redirecting back to the app
