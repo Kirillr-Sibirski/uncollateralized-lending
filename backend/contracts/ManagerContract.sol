@@ -157,6 +157,8 @@ contract LoanFactory {
     address[] borrowers;
 
     ERC20 public token = ERC20(_collateralAsset);
+    ERC20 public baseToken = ERC20(_borrowAsset);
+
     address public Owner;
     address public _ManagerContract;
 
@@ -188,23 +190,20 @@ contract LoanFactory {
         (, , uint256 borrowable, uint256 downPayment) = manager.estimateLoan(
             vaultId
         ); // We estimate loan and also check that user has digital identity and meets the requirements
-        require( // We get some payment from user just to ensure that they have access to some funds. We might have to return it also but right we'll treat only as a 'payment' to get the contract
-            token.transferFrom(msg.sender, address(this), downPayment) // Down payment
-            // "Transfer failed. Ensure you've approved this contract."
-        );
+
+        // require(token.approve(address(this), downPayment), "Approval failed.");
+        // require(token.balanceOf(msg.sender) >= downPayment, "Not enough funds in borrower's account.");
+        // require(token.transferFrom(msg.sender, address(this), downPayment), "Down payment transfer failed.");
+
         CometHelper cometUser = new CometHelper(address(this));
         specificComets[msg.sender] = cometUser;
         borrowers.push(msg.sender);
-
+        
         uint collateralAmount = getBorrowable(borrowable, cometUser);
-        require(
-            token.balanceOf(address(this)) >= collateralAmount,
-            "Not enough funds in the factory contract."
-        );
-        require(
-            token.transfer(address(cometUser), collateralAmount),
-            "Token transfer to user's treasury failed."
-        );
+        // Works fine
+        require (token.balanceOf(address(this)) >= collateralAmount, "Not enough funds in the factory contract.");
+        token.approve(address(cometUser), collateralAmount);
+        token.transferFrom(address(this), address(cometUser), collateralAmount);
 
         cometUser.supply(_collateralAsset, collateralAmount); // We supply collateral, COMP * 10^18
         cometUser.withdrawToUser(_borrowAsset, (borrowable/(10**12)), msg.sender); // We get the borrowed amount to user's treasury, USDC * 10^6
@@ -288,12 +287,14 @@ contract LoanFactory {
         Repay back the borrowed amount
     */
     function repayInterestRate() public payable onlyBorrower {
+        // Amount must be first approved in ERC-20 token contract
         (, int amount) = checkRepay(msg.sender);
         require(
-            token.transferFrom(msg.sender, address(this), uint(amount)) // "Transfer failed. Ensure you've approved this contract."
+            baseToken.transferFrom(msg.sender, address(this), uint(amount)) // "Transfer failed. Ensure you've approved this contract."
         );
 
-        token.transferFrom(
+        baseToken.approve(address(specificComets[msg.sender]), uint(amount) / 2);
+        baseToken.transferFrom(
             address(this),
             address(specificComets[msg.sender]),
             uint(amount) / 2
@@ -305,14 +306,16 @@ contract LoanFactory {
     }
 
     function repayFull() public payable onlyBorrower {
+        // Amount must be first approved in ERC-20 token contract
         CometHelper cometUser = specificComets[msg.sender];
         int owedAmount = cometUser.owed();
         require(
-            token.transferFrom(msg.sender, address(this), uint(owedAmount)) // "Transfer failed. Ensure you've approved this contract."
+            baseToken.transferFrom(msg.sender, address(this), uint(owedAmount)) // "Transfer failed. Ensure you've approved this contract."
             // With full commission
         );
 
-        token.transferFrom(
+        baseToken.approve(address(specificComets[msg.sender]), uint(owedAmount) / 2);
+        baseToken.transferFrom(
             address(this),
             address(cometUser),
             uint(owedAmount / 2)
