@@ -166,13 +166,28 @@ contract CometHelper {
     Comet comet = Comet(cometAddress);
     uint collateral = comet.userCollateral(address(this), asset).balance;
     int healthFactor = int(collateral)/owed();
-    int repay = (owed()) - (int(collateral)/healthFactor); // We find how much borrower needs to pay to get the loan back on a healthy ratio
+      
+    int repay = 0;
+
+    uint scalingFactor = 1000;
+    int targetHealthFactor = 1500; // Define a scaled target health factor (e.g., 1500 for 1.5)
+
+    if ((healthFactor*int(scalingFactor)) < targetHealthFactor) { 
+        uint desiredCollateral = uint(owed()) * uint(targetHealthFactor) / scalingFactor;
+        int collateralDeficit = int(desiredCollateral) - int(collateral);
+
+        if (collateralDeficit > 0) {
+            repay = collateralDeficit;
+        }
+    }
+
     return (healthFactor, repay);
   }
 
-  function owed() public view returns(int104) {
+  function owed() public view returns(int) {
     int104 owedAmount = Comet(cometAddress).userBasic(address(this)).principal;
-    return owedAmount*commissionMultiplier; // With commission
+    int amount = (-1*owedAmount)*(10**10); // Convert to positive and to the same decimals as collateral
+    return amount*commissionMultiplier; // With commission
   }
 
   function liquitable() public view returns(bool) {
