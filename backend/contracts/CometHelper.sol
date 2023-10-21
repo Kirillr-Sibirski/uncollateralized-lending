@@ -186,7 +186,7 @@ contract CometHelper {
 
   function owed() public view returns(int) {
     int104 owedAmount = Comet(cometAddress).userBasic(address(this)).principal;
-    int amount = (-1*owedAmount)*(10**10); // Convert to positive and to the same decimals as collateral
+    int amount = (-1*owedAmount)*(10**9); // Convert to positive and to the same decimals as collateral
     return amount*commissionMultiplier; // With commission
   }
 
