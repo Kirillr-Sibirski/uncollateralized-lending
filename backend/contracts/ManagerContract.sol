@@ -270,23 +270,18 @@ contract LoanFactory {
         cometUser.liquidate(_collateralAsset, address(this));
     }
 
-    function overduePaymentEvent(address user /*uint day*/) public onlyOwner {
+    event setOverduePayment(address, uint);
+    function overduePaymentEvent(address user, uint day) public onlyOwner {
         CometHelper cometUser = specificComets[user];
+        emit setOverduePayment(user, day);
         // "Overdue can only be charged with 1 day intervals."
-        require((block.timestamp - cometUser.overdueCharged()) / 86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
-        cometUser.setIsOverdue(true);
-        cometUser.setOverdueCharged(block.timestamp);
+        // require((block.timestamp-cometUser.overdueCharged())/86400 >= 1); // Checking to ensure that at least 1 day has passed since we last charged borrower with overdue payment
         // Downgrade credit score (depending on how many days)
     }
 
     function repayDueDay(address user) public onlyOwner {
         CometHelper cometUser = specificComets[user];
         cometUser.setRepayDue(block.timestamp + 86400); // Reset the repay date
-    }
-
-    function checkIsOverdue(address user) public view returns(bool){
-        CometHelper cometUser = specificComets[user];
-        return cometUser.isOverdue();
     }
 
     /*
@@ -306,7 +301,7 @@ contract LoanFactory {
 
         specificComets[msg.sender].supply(_borrowAsset, uint(amount) / 2);
         CometHelper cometUser = specificComets[msg.sender];
-        cometUser.setIsOverdue(false);
+        cometUser.setRepayDue(0);
     }
 
     function repayFull() public payable onlyBorrower {
@@ -323,6 +318,7 @@ contract LoanFactory {
             uint(owedAmount / 2)
         );
         cometUser.repayFullBorrow(_borrowAsset, _collateralAsset);
+        cometUser.setRepayDue(0);
         
         uint index;
         for (uint i = 0; i < borrowers.length; i++) {
