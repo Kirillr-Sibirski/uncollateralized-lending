@@ -9,7 +9,7 @@ const contractAbi = JSON.parse(fs.readFileSync("./ABI.json", "utf8"))
 const infuraApiKey = process.env.INFURA_API_KEY;
 const privateKey = process.env.PRIVATE_KEY;
 
-const contractAddress = "0x0a9D3FF1C7c07637B9C59640520Dc9989aadfd46";
+const contractAddress = "0xb868477D12FeDCF861f85a612e740d1F5f430ef0";
 
 const provider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
 // Create a new wallet from the private key
@@ -31,7 +31,8 @@ async function processComets() {
             cometAddresses.push(address);
         }
 
-        for(let i = 0; i <= cometAddresses.length; i++) {
+        for(let i = 0; i <= cometAddresses.length-1; i++) {
+            console.log(cometAddresses[i]);
             const isLiquitable = await contract.checkLiquitable(cometAddresses[i]);// Check if liquitable
             if(isLiquitable) {
                 const contractFunction = contract.connect(wallet).liquidateEvent(cometAddresses[i]);
@@ -57,20 +58,19 @@ async function processComets() {
             }
             const checkPaymentResult = await contract.checkPayment(cometAddresses[i]);
             const dateNow = ethers.utils.formatUnits(checkPaymentResult[0], 0); // 0 is the number of decimal places
-            console.log(dateNow);
             const duePay = ethers.utils.formatUnits(checkPaymentResult[1], 0); // 0 is the number of decimal places
-            console.log(duePay);
 
             const checkIsOverdue = await contract.checkIsOverdue(cometAddresses[i]);
 
             var daysPassed;
-            if(checkIsOverdue())
+            if(checkIsOverdue)
                 daysPassed = (dateNow-duePay)/86400; // Problem with this one. dateNow - 0 / day is not gonna equal to what we want
             else
                 daysPassed = 0;
-                
+
             // If loan was repaid this won't execute but the only problem rn is that it will constantly call overdue payment function on the smart contract we need some kind of a counter.
             if(daysPassed >= 3) {
+                console.log("More than 3 days passed.");
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 3);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed
@@ -79,6 +79,7 @@ async function processComets() {
                 const txResponse = await contractFunction.send(transactionOptions);
                 await txResponse.wait();
             } else if(daysPassed >= 2) {
+                console.log("More than 2 days passed.");
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 2);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed
@@ -87,6 +88,7 @@ async function processComets() {
                 const txResponse = await contractFunction.send(transactionOptions);
                 await txResponse.wait();
             } else if(daysPassed >= 1){
+                console.log("More than 1 day passed.");
                 const contractFunction = contract.connect(wallet).overduePaymentEvent(cometAddresses[i], 1);
                 const transactionOptions = {
                     gasLimit: 2000000, // Adjust the gas limit as needed
@@ -97,9 +99,9 @@ async function processComets() {
             }
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error(error);
     }
-    setTimeout(processComets, 600000); // Set it to run every 10 minutes
+    setTimeout(processComets, 6000); // Set it to run every 10 minutes //600000
 }
 
 processComets();
