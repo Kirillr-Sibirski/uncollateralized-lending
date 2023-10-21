@@ -20,7 +20,7 @@ const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 // Set an interval and run it every 10 sec
 async function processComets() {
     try {
-        const cometAddresses = await contract.specificComets.keys();
+        const cometAddresses = await contract.borrowers();
 
         console.log('Result:', result);
         for(let i = 0; i < cometAddresses.length; i++) {
