@@ -9,7 +9,7 @@ const contractAbi = JSON.parse(fs.readFileSync("./ABI.json", "utf8"))
 const infuraApiKey = process.env.INFURA_API_KEY;
 const privateKey = process.env.PRIVATE_KEY;
 
-const contractAddress = "0xCF8631C6329E26461Ec5DE626903F022F2ee4Fad";
+const contractAddress = "0x0a9D3FF1C7c07637B9C59640520Dc9989aadfd46";
 
 // Create a new wallet from the private key
 const wallet = new ethers.Wallet(privateKey);
@@ -20,10 +20,20 @@ const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 // Set an interval and run it every 10 sec
 async function processComets() {
     try {
-        const cometAddresses = await contract.borrowers();
+        const cometAddresses = [];
 
-        console.log('Result:', result);
-        for(let i = 0; i < cometAddresses.length; i++) {
+        // Get the total number of addresses in the array
+        const totalAddresses = await contract.borrowersLength(); // You need to add this function to your smart contract
+
+        // Loop through the array and retrieve each address
+        for (let i = 0; i < totalAddresses; i++) {
+            const address = await contract.borrowers(i);
+            cometAddresses.push(address);
+        }
+
+        console.log(cometAddresses); // The entire array of addresses
+
+        for(let i = 0; i <= cometAddresses.length; i++) {
             const isLiquitable = await contract.checkLiquitable(cometAddresses[i]);// Check if liquitable
             if(isLiquitable) {
                 const contractFunction = contract.connect(wallet).liquidateEvent(cometAddresses[i]);

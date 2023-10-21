@@ -177,6 +177,10 @@ contract LoanFactory {
         _;
     }
 
+    function borrowersLength() public view returns (uint) {
+        return borrowers.length;
+    }
+
     function getLoan(bytes memory response) public {
         ManagerContract manager = ManagerContract(_ManagerContract);
         require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
