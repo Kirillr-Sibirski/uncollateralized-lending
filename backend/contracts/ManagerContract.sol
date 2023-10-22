@@ -183,13 +183,13 @@ contract LoanFactory {
         return borrowers.length;
     }
 
-    function getLoan(bytes memory response) public {
+    function getLoan() public {
         ManagerContract manager = ManagerContract(_ManagerContract);
-        require(address(specificComets[msg.sender]) == address(0)); //"User already has an active loan."
-        uint vaultId = manager.verifySismoConnectResponse(response);
+        require(address(specificComets[msg.sender]) == address(0), "User already has an active loan.");
+        //uint vaultId = manager.verifySismoConnectResponse(response);
         (, , uint256 borrowable, uint256 downPayment) = manager.estimateLoan(
-            vaultId
-        ); // We estimate loan and also check that user has digital identity and meets the requirements
+            //vaultId
+        ); // We estimate loan and also chseck that user has digital identity and meets the requirements
 
         // require(token.approve(address(this), downPayment), "Approval failed.");
         // require(token.balanceOf(msg.sender) >= downPayment, "Not enough funds in borrower's account.");
@@ -227,8 +227,7 @@ contract LoanFactory {
         uint compoundConverted = compTokenPrice * (10 ** 10);
         emit setCompoundCoverted(compoundConverted);
 
-        uint collateralAmount = (borrowableScaled / compoundConverted) *
-            (10 ** 18); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
+        uint collateralAmount = ((borrowableScaled*(10 ** 18))/compoundConverted); // For now, we just supply twice as much collateral to make everything easier but ideally we need a proper way which calls Compound for minimal borrowable amount etc.
         emit collateralAmountSet(collateralAmount);
         return collateralAmount;
     }
