@@ -113,21 +113,26 @@ const Home = () => {
   const callSismoContract = async (response) => {
     try {// Replace with the function name you want to call
       setSismoResp(response);
-
-      const result = await managerContract.estimateLoan(sismoResp);
-      console.log("Result: ", result)
-
-      setShowLoan(true);
-      setCreditScore(result[0])
-      setLoanInterest(result[1]);
-      setLoanAmount(result[2]);
-      setCollateralAmount(result[3])
       console.log('Function result:', result)
     } catch (error) {
       console.error('Error calling smart contract function:', error)
     }
   }
 
+  const getLoanEstimate = async () => {
+    const result = await managerContract.estimateLoan(sismoResp);
+    setShowLoan(true);
+    setCreditScore(result[0])
+    setLoanInterest(result[1]);
+    setLoanAmount(result[2]);
+    setCollateralAmount(result[3])
+  }
+
+  useEffect(()=>{
+    if(sismoResp && connectedAddress && managerContract){
+      getLoanEstimate();
+    }
+  }, [sismoResp, connectedAddress, managerContract])
   useEffect(() => {
     getCurrentAccount();
   }, [])
