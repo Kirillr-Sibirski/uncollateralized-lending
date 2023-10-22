@@ -18,8 +18,8 @@ const EthInWei = 1000000000000000000;
 
 const Home = () => {
   const [connectedAddress, setConnectedAddress] = useState(null)
-  const contractAddress = '0xeBCFaD55a5917fD2014E5E015E0c66E4c304a402'
-  const managerContractAddr = '0x3c7FBd92891e446b9D648548A64046343FA95E95'
+  const contractAddress = '0xC51e72092E1286499141A6E73d4DBD2feF4852AE'
+  const managerContractAddr = '0x8C91D4b63D34cDA118E33a9cE49CF797CAB41a9f'
   const usdcContractAddr = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'
   const GITCOIN_PASSPORT_HOLDERS = '0x1cde61966decb8600dfd0749bd371f12'
   const ROCIFI_CREDIT_HOLDERS = '0xb3ac412738ed399acab21fbda9add42c'

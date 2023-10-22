@@ -39,6 +39,19 @@
 				"type": "uint256"
 			}
 		],
+		"name": "setBorrowable",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
 		"name": "setBorrowableScaled",
 		"type": "event"
 	},
@@ -306,14 +319,14 @@
 		"inputs": [],
 		"name": "repayFull",
 		"outputs": [],
-		"stateMutability": "payable",
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [],
 		"name": "repayInterestRate",
 		"outputs": [],
-		"stateMutability": "payable",
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
