@@ -30,7 +30,7 @@ const Home = () => {
   const [creditScore, setCreditScore] = useState(0)
   const [loanInterest, setLoanInterest] = useState(0)
   const [showLoan, setShowLoan] = useState(false)
-  const [loanExists, setLoanExists] = useState(true)
+  const [loanExists, setLoanExists] = useState(false)
   const [pendingAmount, setPendingAmount] = useState(0);
   const [healthRatio, setHealthRatio] = useState(0);
   const [collateralAmount, setCollateralAmount] = useState(0)
@@ -429,7 +429,7 @@ const Home = () => {
               />
             )}
           </div>
-        </div>
+        </div>  
       </div>
     </div>
   )
