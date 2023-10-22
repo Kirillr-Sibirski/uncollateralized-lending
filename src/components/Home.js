@@ -26,7 +26,7 @@ const Home = () => {
   const [loanAmount, setLoanAmount] = useState(0)
   const [loanInterest, setLoanInterest] = useState(0)
   const [showLoan, setShowLoan] = useState(false)
-  const [loanExists, setLoanExists] = useState(true)
+  const [loanExists, setLoanExists] = useState(false)
   const [loanInterestAmount, setLoanInterestAmount] = useState(0)
   const [amountPaid, setAmountPaid] = useState(0)
   const [amount, setAmount] = useState(0)
