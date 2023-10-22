@@ -5,6 +5,7 @@ import {
 } from '@sismo-core/sismo-connect-react'
 import { ethers } from 'ethers'
 import ABI from '../contracts/LoanFactoryABI.json'
+import managerABI from '../contracts/ManagerFactoryABI.json'
 import React, { useEffect, useState } from 'react'
 import HowItWorks from '../assets/HowItWorks.png'
 import Compound from '../assets/compound-logo.png'
@@ -17,11 +18,11 @@ const EthInWei = 1000000000000000000;
 const Home = () => {
   const [connectedAddress, setConnectedAddress] = useState(null)
   const contractAddress = '0xcc03EBBD6F7378aAbD010a8329bfE0e018771480'
+  const managerContractAddr = '0xcc03EBBD6F7378aAbD010a8329bfE0e018771480';
   const GITCOIN_PASSPORT_HOLDERS = '0x1cde61966decb8600dfd0749bd371f12'
   const ROCIFI_CREDIT_HOLDERS = '0xb3ac412738ed399acab21fbda9add42c'
 
   const provider = new ethers.providers.Web3Provider(window.ethereum)
-  const contract = new ethers.Contract(contractAddress, ABI, provider)
 
   const [loanAmount, setLoanAmount] = useState(0)
   const [loanInterest, setLoanInterest] = useState(0)
@@ -31,7 +32,9 @@ const Home = () => {
   const [amountPaid, setAmountPaid] = useState(0)
   const [amount, setAmount] = useState(0)
   const [collateralAmount, setCollateralAmount] = useState(0)
+  const [sismoResp, setSismoResp] = useState(0)
   const [signedContract, setSignedContract] = useState(null)
+  const [managerContract, setManagerContract] = useState(null)
 
   const handleConnectWallet = async () => {
     try {
@@ -52,7 +55,9 @@ const Home = () => {
     }
   }
 
-  const handleDisburseLoan = () => {}
+  const handleDisburseLoan = async () => {
+    const result = await signedContract.getLoan(sismoResp);
+  }
 
   const handleRepayFullLoan = async () => {
     if (!connectedAddress || loanAmount + loanInterestAmount - amountPaid > 0) {
@@ -71,13 +76,8 @@ const Home = () => {
   }
 
   const callSismoContract = async (response) => {
-    try {
-      const result = await contract.getLoan(response) // Replace with the function name you want to call
-      if (result) {
-        setLoanExists(true)
-      } else {
-        setShowLoan(true)
-      }
+    try {// Replace with the function name you want to call
+      const result = await managerContract.estimateLoan(sismoResp);
       console.log('Function result:', result)
     } catch (error) {
       console.error('Error calling smart contract function:', error)
@@ -86,10 +86,27 @@ const Home = () => {
 
   useEffect(() => {
     if (connectedAddress) {
-      const signer = provider.getSigner()
+      const signer = provider.getSigner();
       setSignedContract(new ethers.Contract(contractAddress, ABI, signer))
+      setManagerContract(new ethers.Contract(managerContractAddr, managerABI, provider))
     }
   }, [connectedAddress])
+
+  async function checkLoanExists () {
+    const loan = signedContract.specificComets(connectedAddress);
+    if(parseInt(loan, 16) == 0){
+      setShowLoan(false);
+      setLoanExists(false);
+    } else {
+      setLoanExists(true);
+    }
+  }
+
+  useEffect(() => {
+    if (signedContract) {
+      checkLoanExists();
+    }
+  }, [signedContract])
 
   const config = {
     appId: '0x70fa08c440c103a75df7bb076c84b99f',
