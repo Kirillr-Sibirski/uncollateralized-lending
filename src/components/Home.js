@@ -4,27 +4,34 @@ import {
   AuthType,
 } from '@sismo-core/sismo-connect-react'
 import { ethers } from 'ethers'
-import ABI from '../contracts/ABI.json'
-import React, { useState } from 'react'
+import ABI from '../contracts/LoanFactoryABI.json'
+import React, { useEffect, useState } from 'react'
 import HowItWorks from '../assets/HowItWorks.png'
 import Compound from '../assets/compound-logo.png'
 import Sismo from '../assets/sismo-logo.png'
 import Xmtp from '../assets/xmtp-logo.svg'
 
+
+const EthInWei = 1000000000000000000;
+
 const Home = () => {
-  const [connectedAddress, setConnectedAddress] = useState('')
+  const [connectedAddress, setConnectedAddress] = useState(null)
   const contractAddress = '0xcc03EBBD6F7378aAbD010a8329bfE0e018771480'
   const GITCOIN_PASSPORT_HOLDERS = '0x1cde61966decb8600dfd0749bd371f12'
   const ROCIFI_CREDIT_HOLDERS = '0xb3ac412738ed399acab21fbda9add42c'
 
+  const provider = new ethers.providers.Web3Provider(window.ethereum)
+  const contract = new ethers.Contract(contractAddress, ABI, provider)
+
   const [loanAmount, setLoanAmount] = useState(0)
   const [loanInterest, setLoanInterest] = useState(0)
-  const [showLoan, setShowLoan] = useState(true)
-  const [loanExists, setLoanExists] = useState(false)
+  const [showLoan, setShowLoan] = useState(false)
+  const [loanExists, setLoanExists] = useState(true)
   const [loanInterestAmount, setLoanInterestAmount] = useState(0)
   const [amountPaid, setAmountPaid] = useState(0)
   const [amount, setAmount] = useState(0)
   const [collateralAmount, setCollateralAmount] = useState(0)
+  const [signedContract, setSignedContract] = useState(null)
 
   const handleConnectWallet = async () => {
     try {
@@ -45,31 +52,44 @@ const Home = () => {
     }
   }
 
-  const handleLoanEstimate = () => {
-    setLoanAmount(100)
-    setLoanInterest(10)
-    setShowLoan(true)
-  }
+  const handleDisburseLoan = () => {}
 
-  const handleGetLoan = () => {}
-
-  const handleRepayLoan = () => {
-    if (!amount || amount > loanAmount + loanInterestAmount - amountPaid) {
+  const handleRepayFullLoan = async () => {
+    if (!connectedAddress || loanAmount + loanInterestAmount - amountPaid > 0) {
       return
     }
+    const txnHash = await signedContract.repayFull({ value: ethers.utils.parseEther(String(loanAmount + loanInterestAmount - amountPaid / EthInWei)) });
+    await txnHash.wait();
+  }
+
+  const handleRepayLoan = async () => {
+    if (!connectedAddress || !amount || amount > loanAmount + loanInterestAmount - amountPaid) {
+      return
+    }
+    const txnHash = await signedContract.repayInterestRate({ value: ethers.utils.parseEther(String(amount / EthInWei)) });
+    await txnHash.wait();
   }
 
   const callSismoContract = async (response) => {
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum)
-      const contract = new ethers.Contract(contractAddress, ABI, provider)
-      console.log('Contract: ', contract)
-      const result = await contract.doSomethingUsingSismoConnect(response) // Replace with the function name you want to call
+      const result = await contract.getLoan(response) // Replace with the function name you want to call
+      if (result) {
+        setLoanExists(true)
+      } else {
+        setShowLoan(true)
+      }
       console.log('Function result:', result)
     } catch (error) {
       console.error('Error calling smart contract function:', error)
     }
   }
+
+  useEffect(() => {
+    if (connectedAddress) {
+      const signer = provider.getSigner()
+      setSignedContract(new ethers.Contract(contractAddress, ABI, signer))
+    }
+  }, [connectedAddress])
 
   const config = {
     appId: '0x70fa08c440c103a75df7bb076c84b99f',
@@ -214,14 +234,14 @@ const Home = () => {
         >
           <div
             className="content-section"
-            style={{ color: '#82B7DC', flex: 2 }}
+            style={{ color: '#82B7DC', flex: 1 }}
           >
             <h2>{loanExists ? 'Your Loan Details' : 'GET STARTED'}</h2>
           </div>
 
           <div
             className="content-section"
-            style={{ color: '#82B7DC', flex: 4 }}
+            style={{ color: '#82B7DC', flex: 3 }}
           >
             {loanExists ? (
               <div
@@ -265,11 +285,14 @@ const Home = () => {
                 <span className="loan-info">
                   Interest rate: {loanInterest}% p.a.
                 </span>
-                <span className="loan-info">Collateral Amount: {collateralAmount}</span>
+                <span className="loan-info">
+                  Collateral Amount: {collateralAmount}
+                </span>
                 <span className="loan-description">
-                  {collateralAmount 
-                  ? "You don't have the required trust score yet for a collateral free loan"
-                  : "Yay! You are eligible for a collateral free loan"}</span>
+                  {collateralAmount
+                    ? "You don't have the required trust score yet for a collateral free loan"
+                    : 'Yay! You are eligible for a collateral free loan'}
+                </span>
               </div>
             ) : (
               <p className="description">
@@ -297,9 +320,12 @@ const Home = () => {
                 <button onClick={handleRepayLoan} className="action-button">
                   Repay Loan
                 </button>
+                <button onClick={handleRepayFullLoan} className="action-button">
+                  Repay Full Loan
+                </button>
               </div>
             ) : showLoan ? (
-              <button onClick={handleGetLoan} className="action-button">
+              <button onClick={handleDisburseLoan} className="action-button">
                 Disburse Loan
               </button>
             ) : (
@@ -344,6 +370,9 @@ const Home = () => {
                   console.log('Call Sismo Contract.')
                   callSismoContract(response)
                   //    call your contract/backend with the response as bytes
+                }}
+                overrideStyle={{
+                  backgroundColor: "#3466AA",
                 }}
               />
             )}
