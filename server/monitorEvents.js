@@ -10,7 +10,7 @@ const contractAbi = JSON.parse(fs.readFileSync("./ABI.json", "utf8"))
 const infuraApiKey = process.env.INFURA_API_KEY;
 const privateKey = process.env.PRIVATE_KEY;
 
-const contractAddress = "0x938223B32240ad0D6862D6F7785f07EC2D153a22";
+const contractAddress = "0xeBCFaD55a5917fD2014E5E015E0c66E4c304a402";
 
 const provider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
 // Create a new wallet from the private key
