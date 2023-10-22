@@ -1,3 +1,43 @@
+# ZKredit
+![ZKredit](https://github.com/Kirillr-Sibirski/uncollateralized-lending/blob/main/src/assets/ZKredit.png?raw=true)
+
+This project leverages the power of Sismo to verify borrowers' eligibility data on-chain, integrates Compound v3 protocol for loan functionalities, and utilizes the Push protocol for loan status notifications.
+
+## Getting Started
+
+### Installing Dependencies
+
+To get your environment set up:
+
+1. **Root Directory**:
+   In the project directory, you can run:
+   `npm install`
+
+2. **Backend Folder (for Hardhat)**:
+   Change directory to the backend folder and install the necessary packages:
+   `npm install`
+
+### Sismo Setup
+
+#### Quick Start:
+
+Choose and install the starter with the following command:
+`npm create sismo-connect-app@latest`
+
+#### Verify onchain with Sismo:
+
+1. **Integrate Sismo Connect in Your Front End**:
+   First, install the Sismo Connect React Library:
+   `npm install @sismo-core/sismo-connect-react`
+
+2. **Integrate Sismo Connect in Your Smart Contract**:
+   Install the Sismo Connect Solidity Library with:
+   `yarn add @sismo-core/sismo-connect-solidity`
+
+3. **Verify Sismo Connect Responses**:
+   Once integrated, make sure to handle and verify Sismo Connect responses sent from your front end to your backend for further processing.
+   See the [Sismo Docs](https://docs.sismo.io/sismo-docs/build-with-sismo-connect/getting-started-1) for more information.
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -44,27 +84,3 @@ You don't have to ever use `eject`. The curated feature set is suitable for smal
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
