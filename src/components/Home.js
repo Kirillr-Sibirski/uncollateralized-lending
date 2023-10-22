@@ -88,6 +88,7 @@ const Home = () => {
 
   const callSismoContract = async (response) => {
     try {// Replace with the function name you want to call
+      setSismoResp(response);
       const result = await managerContract.estimateLoan(sismoResp);
       console.log('Function result:', result)
     } catch (error) {
