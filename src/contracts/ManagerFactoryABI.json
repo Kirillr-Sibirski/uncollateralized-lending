@@ -1,127 +1,19 @@
 [
 	{
-		"inputs": [],
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "manager",
+				"type": "address"
+			}
+		],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "enum AuthType",
-				"name": "authType",
-				"type": "uint8"
-			}
-		],
-		"name": "AuthTypeNotFoundInVerifiedResult",
-		"type": "error"
-	},
-	{
 		"anonymous": false,
-		"inputs": [
-			{
-				"components": [
-					{
-						"internalType": "bytes16",
-						"name": "appId",
-						"type": "bytes16"
-					},
-					{
-						"internalType": "bytes16",
-						"name": "namespace",
-						"type": "bytes16"
-					},
-					{
-						"internalType": "bytes32",
-						"name": "version",
-						"type": "bytes32"
-					},
-					{
-						"components": [
-							{
-								"internalType": "enum AuthType",
-								"name": "authType",
-								"type": "uint8"
-							},
-							{
-								"internalType": "bool",
-								"name": "isAnon",
-								"type": "bool"
-							},
-							{
-								"internalType": "uint256",
-								"name": "userId",
-								"type": "uint256"
-							},
-							{
-								"internalType": "bytes",
-								"name": "extraData",
-								"type": "bytes"
-							},
-							{
-								"internalType": "bytes",
-								"name": "proofData",
-								"type": "bytes"
-							}
-						],
-						"internalType": "struct VerifiedAuth[]",
-						"name": "auths",
-						"type": "tuple[]"
-					},
-					{
-						"components": [
-							{
-								"internalType": "enum ClaimType",
-								"name": "claimType",
-								"type": "uint8"
-							},
-							{
-								"internalType": "bytes16",
-								"name": "groupId",
-								"type": "bytes16"
-							},
-							{
-								"internalType": "bytes16",
-								"name": "groupTimestamp",
-								"type": "bytes16"
-							},
-							{
-								"internalType": "uint256",
-								"name": "value",
-								"type": "uint256"
-							},
-							{
-								"internalType": "bytes",
-								"name": "extraData",
-								"type": "bytes"
-							},
-							{
-								"internalType": "uint256",
-								"name": "proofId",
-								"type": "uint256"
-							},
-							{
-								"internalType": "bytes",
-								"name": "proofData",
-								"type": "bytes"
-							}
-						],
-						"internalType": "struct VerifiedClaim[]",
-						"name": "claims",
-						"type": "tuple[]"
-					},
-					{
-						"internalType": "bytes",
-						"name": "signedMessage",
-						"type": "bytes"
-					}
-				],
-				"indexed": false,
-				"internalType": "struct SismoConnectVerifiedResult",
-				"name": "result",
-				"type": "tuple"
-			}
-		],
-		"name": "ResponseVerified",
+		"inputs": [],
+		"name": "LiquidationEvent",
 		"type": "event"
 	},
 	{
@@ -130,19 +22,90 @@
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "value1",
+				"name": "",
 				"type": "uint256"
 			}
 		],
-		"name": "vaultIdReceived",
+		"name": "collateralAmountSet",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "setBorrowable",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "setBorrowableScaled",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "setCompTokenPrice",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "setCompoundCoverted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "setOverduePayment",
 		"type": "event"
 	},
 	{
 		"inputs": [],
-		"name": "ADDRESSES_PROVIDER_V2",
+		"name": "Owner",
 		"outputs": [
 			{
-				"internalType": "contract IAddressesProvider",
+				"internalType": "address",
 				"name": "",
 				"type": "address"
 			}
@@ -152,12 +115,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "APP_ID",
+		"name": "_ManagerContract",
 		"outputs": [
 			{
-				"internalType": "bytes16",
+				"internalType": "address",
 				"name": "",
-				"type": "bytes16"
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -165,12 +128,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "GITCOIN_PASSPORT_HOLDERS",
+		"name": "_borrowAsset",
 		"outputs": [
 			{
-				"internalType": "bytes16",
+				"internalType": "address",
 				"name": "",
-				"type": "bytes16"
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -178,7 +141,52 @@
 	},
 	{
 		"inputs": [],
-		"name": "IS_IMPERSONATION_MODE",
+		"name": "_collateralAsset",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "baseToken",
+		"outputs": [
+			{
+				"internalType": "contract ERC20",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "borrowersLength",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "checkLiquitable",
 		"outputs": [
 			{
 				"internalType": "bool",
@@ -190,83 +198,15 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "ROCIFI_CREDIT_HOLDERS",
-		"outputs": [
-			{
-				"internalType": "bytes16",
-				"name": "",
-				"type": "bytes16"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "SISMO_CONNECT_LIB_VERSION",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "config",
-		"outputs": [
-			{
-				"components": [
-					{
-						"internalType": "bytes16",
-						"name": "appId",
-						"type": "bytes16"
-					},
-					{
-						"components": [
-							{
-								"internalType": "bool",
-								"name": "isImpersonationMode",
-								"type": "bool"
-							}
-						],
-						"internalType": "struct VaultConfig",
-						"name": "vault",
-						"type": "tuple"
-					}
-				],
-				"internalType": "struct SismoConnectConfig",
-				"name": "",
-				"type": "tuple"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "vaultId",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
 			}
 		],
-		"name": "estimateLoan",
+		"name": "checkPayment",
 		"outputs": [
-			{
-				"internalType": "uint16",
-				"name": "",
-				"type": "uint16"
-			},
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
 			{
 				"internalType": "uint256",
 				"name": "",
@@ -284,17 +224,35 @@
 	{
 		"inputs": [
 			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "checkRepay",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getCollateralBalance",
+		"outputs": [
+			{
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
-			}
-		],
-		"name": "vaultIdToCreditScore",
-		"outputs": [
-			{
-				"internalType": "uint16",
-				"name": "",
-				"type": "uint16"
 			}
 		],
 		"stateMutability": "view",
@@ -308,15 +266,112 @@
 				"type": "bytes"
 			}
 		],
-		"name": "verifySismoConnectResponse",
-		"outputs": [
+		"name": "getLoan",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "liquidateEvent",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
 			{
 				"internalType": "uint256",
-				"name": "",
+				"name": "day",
 				"type": "uint256"
 			}
 		],
+		"name": "overduePaymentEvent",
+		"outputs": [],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			}
+		],
+		"name": "repayDueDay",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "repayFull",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "repayInterestRate",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "specificComets",
+		"outputs": [
+			{
+				"internalType": "contract CometHelper",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "token",
+		"outputs": [
+			{
+				"internalType": "contract ERC20",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalOwed",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	}
 ]

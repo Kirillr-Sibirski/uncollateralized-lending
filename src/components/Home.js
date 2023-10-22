@@ -75,10 +75,12 @@ const Home = () => {
   }
 
   const handleRepayLoan = async () => {
-    if (!connectedAddress || !amount || amount > loanAmount + loanInterestAmount - amountPaid) {
-      return
-    }
-    const repay = signedContract.checkRepay(connectedAddress)[1];
+    // if (!connectedAddress || !amount || amount > loanAmount + loanInterestAmount - amountPaid) {
+    //   return
+    // }
+    console.log(connectedAddress);
+    const repay = await signedContract.checkRepay(connectedAddress);
+    console.log(repay);
     // Need to approve the transfer of funds first
     const txnHashToken = baseTokenContract.approve(contractAddress, repay);
     await txnHashToken.wait();
