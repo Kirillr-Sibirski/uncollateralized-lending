@@ -95,6 +95,7 @@ interface CometRewards {
 }
 
 interface ERC20 {
+  function allowance(address owner, address spender) external returns (uint256);
   function approve(address spender, uint256 amount) external returns (bool);
   function decimals() external view returns (uint);
   function transfer(address to, uint256 value) external returns (bool);
@@ -112,7 +113,7 @@ contract CometHelper {
   uint public BASE_INDEX_SCALE;
   uint constant public MAX_UINT = type(uint).max;
   address public deployedContract;
-  uint public paymentDue;
+  uint public paymentDue = 0;
 
   event AssetInfoLog(CometStructs.AssetInfo);
   event LogUint(string, uint);
@@ -140,7 +141,7 @@ contract CometHelper {
   /*
    * Withdraws an asset from Compound III to this contract
    */
-  function withdraw(address asset, uint amount) public onlyDeployingContract {
+  function withdraw(address asset, uint amount) public { //onlyDeployingContract
     Comet(cometAddress).withdraw(asset, amount);
   }
 
@@ -152,18 +153,19 @@ contract CometHelper {
   /*
    * Repays an entire borrow of the base asset from Compound III
    */
-  function repayFullBorrow(address baseAsset, address collateralAsset) public onlyDeployingContract {
-    // Make this payable
-    ERC20(baseAsset).approve(cometAddress, MAX_UINT);
-    Comet(cometAddress).supply(baseAsset, MAX_UINT); // Repay the full owed amount
-    Comet(cometAddress).withdraw(collateralAsset, MAX_UINT); // Get the full collateral out of the Compound protocol
-    ERC20(collateralAsset).transfer(msg.sender, MAX_UINT); // Transfer the collateral back to main treasury
+
+  function repayFullBorrow(address baseAsset, address collateralAsset, uint _owed) public onlyDeployingContract {
+    ERC20(baseAsset).approve(cometAddress, _owed);
+    Comet(cometAddress).supply(baseAsset, _owed); // Repay the full owed amount
+    // Comet(cometAddress).withdraw(collateralAsset, MAX_UINT); // Get the full collateral out of the Compound protocol
+    // ERC20(collateralAsset).transfer(msg.sender, MAX_UINT); // Transfer the collateral back to main treasury
   }
 
   function needToRepay(address asset) public view returns(int, int){
     Comet comet = Comet(cometAddress);
     uint collateral = comet.userCollateral(address(this), asset).balance;
-    int healthFactor = int(collateral)/owed();
+    uint price = getCompoundPrice(getPriceFeedAddress(asset));
+    int healthFactor = int(collateral*price)/owed();
       
     int repay = 0;
 
@@ -183,7 +185,7 @@ contract CometHelper {
 
   function owed() public view returns(int) {
     int104 owedAmount = Comet(cometAddress).userBasic(address(this)).principal;
-    int amount = (-1*owedAmount)*(10**9); // Convert to positive and to the same decimals as collateral
+    int amount = (-1*owedAmount); // Convert to positive and to the same decimals as collateral
     return amount*commissionMultiplier; // With commission
   }
 
