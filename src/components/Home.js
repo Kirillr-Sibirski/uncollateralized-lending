@@ -27,17 +27,18 @@ const Home = () => {
   const provider = new ethers.providers.Web3Provider(window.ethereum)
 
   const [loanAmount, setLoanAmount] = useState(0)
+  const [creditScore, setCreditScore] = useState(0)
   const [loanInterest, setLoanInterest] = useState(0)
   const [showLoan, setShowLoan] = useState(false)
-  const [loanExists, setLoanExists] = useState(false)
-  const [loanInterestAmount, setLoanInterestAmount] = useState(0)
-  const [amountPaid, setAmountPaid] = useState(0)
-  const [amount, setAmount] = useState(0)
+  const [loanExists, setLoanExists] = useState(true)
+  const [pendingAmount, setPendingAmount] = useState(0);
+  const [healthRatio, setHealthRatio] = useState(0);
   const [collateralAmount, setCollateralAmount] = useState(0)
   const [sismoResp, setSismoResp] = useState(0)
   const [signedContract, setSignedContract] = useState(null)
   const [managerContract, setManagerContract] = useState(null)
   const [baseTokenContract, setBaseTokenContract] = useState(null)
+  const [timeOverdue, setTimeOverdue] = useState(0);
 
   const handleConnectWallet = async () => {
     try {
@@ -59,30 +60,39 @@ const Home = () => {
   }
 
   const handleDisburseLoan = async () => {
-    const result = await signedContract.getLoan(sismoResp);
+    const txnHash = await signedContract.getLoan(sismoResp);
+    await txnHash.wait();
+    const totalOwed = await signedContract.totalOwed(connectedAddress);
+    const repay = await signedContract.checkRepay(connectedAddress);
+    const overdue = await signedContract.checkPayment(connectedAddress);
+    setLoanAmount(totalOwed);
+    setPendingAmount(repay[1]);
+    setHealthRatio(repay[0]);
+    setTimeOverdue((overdue[0] - overdue[1])/1000);
+    setLoanExists(true);
   }
 
   const handleRepayFullLoan = async () => {
-    if (!connectedAddress || loanAmount + loanInterestAmount - amountPaid > 0) {
+    if (!connectedAddress || !pendingAmount) {
       return
     }
-    const owed = signedContract.totalOwed();
+    const owed = await signedContract.totalOwed();
     // Need to approve the transfer of funds first
-    const txnHashToken = baseTokenContract.approve(contractAddress, owed);
+    const txnHashToken = await baseTokenContract.approve(contractAddress, owed);
     await txnHashToken.wait();
     const txnHash = await signedContract.repayFull();
     await txnHash.wait();
   }
 
   const handleRepayLoan = async () => {
-    // if (!connectedAddress || !amount || amount > loanAmount + loanInterestAmount - amountPaid) {
-    //   return
-    // }
+    if (!connectedAddress || !pendingAmount) {
+      return
+    }
     console.log(connectedAddress);
     const repay = await signedContract.checkRepay(connectedAddress);
     console.log(repay);
     // Need to approve the transfer of funds first
-    const txnHashToken = baseTokenContract.approve(contractAddress, repay);
+    const txnHashToken = await baseTokenContract.approve(contractAddress, repay);
     await txnHashToken.wait();
     const txnHash = await signedContract.repayInterestRate();
     await txnHash.wait();
@@ -92,6 +102,11 @@ const Home = () => {
     try {// Replace with the function name you want to call
       setSismoResp(response);
       const result = await managerContract.estimateLoan(sismoResp);
+      setShowLoan(true);
+      setCreditScore(result[0])
+      setLoanInterest(result[1]);
+      setLoanAmount(result[2]);
+      setCollateralAmount(result[3])
       console.log('Function result:', result)
     } catch (error) {
       console.error('Error calling smart contract function:', error)
@@ -108,11 +123,18 @@ const Home = () => {
   }, [connectedAddress])
 
   async function checkLoanExists () {
-    const loan = signedContract.specificComets(connectedAddress);
+    const loan = await signedContract.specificComets(connectedAddress);
     if(parseInt(loan, 16) == 0){
       setShowLoan(false);
       setLoanExists(false);
     } else {
+      const totalOwed = await signedContract.totalOwed();
+      const repay = await signedContract.checkRepay(connectedAddress);
+      const overdue = await signedContract.checkPayment(connectedAddress);
+      setLoanAmount(totalOwed);
+      setPendingAmount(repay[1]);
+      setHealthRatio(repay[0]);
+      setTimeOverdue((overdue[0] - overdue[1])/1000);
       setLoanExists(true);
     }
   }
@@ -287,16 +309,19 @@ const Home = () => {
                 <span className="loan-info">
                   Total amount borrowed: {loanAmount}
                 </span>
-                <span className="loan-info">
-                  Interest rate: {loanInterest}% p.a.
-                </span>
-                <span className="loan-info">
+                {/* <span className="loan-info">
                   Interest accumulated till date: {loanInterestAmount}
                 </span>
-                <span className="loan-info">Amount Paid: {amountPaid}</span>
+                <span className="loan-info">Amount Paid: {amountPaid}</span> */}
+                <span className="loan-info">
+                  Health Ratio: {healthRatio}
+                </span>
                 <span className="loan-info">
                   Amount pending to be paid:{' '}
-                  {loanAmount + loanInterestAmount - amountPaid}
+                  {pendingAmount}
+                </span>
+                <span className="loan-info">
+                  Time Overdue: {timeOverdue}
                 </span>
               </div>
             ) : showLoan ? (
@@ -313,6 +338,7 @@ const Home = () => {
                   history. Following are the details about the loan that you are
                   eligible for:
                 </span>
+                <span className="loan-info">Trust Score: {creditScore}</span>
                 <span className="loan-info">Loan Amount: {loanAmount}</span>
                 <span className="loan-info">
                   Interest rate: {loanInterest}% p.a.
@@ -343,12 +369,6 @@ const Home = () => {
           >
             {loanExists ? (
               <div className="repay-section">
-                <input
-                  type="number"
-                  placeholder="Amount to repay"
-                  className="amount-input"
-                  onChange={(event) => setAmount(event.target.value)}
-                />
                 <button onClick={handleRepayLoan} className="action-button">
                   Repay Loan
                 </button>
