@@ -11,7 +11,7 @@ import React, { useEffect, useState } from 'react'
 import HowItWorks from '../assets/HowItWorks.png'
 import Compound from '../assets/compound-logo.png'
 import Sismo from '../assets/sismo-logo.png'
-import Xmtp from '../assets/xmtp-logo.svg'
+import Push from '../assets/push-logo.jpeg'
 
 
 const EthInWei = 1000000000000000000;
@@ -232,9 +232,9 @@ const Home = () => {
                 style={{ marginInline: 20 }}
               />
             </a>
-            <a href="https://xmtp.org/">
+            <a href="https://push.org/">
               <img
-                src={Xmtp}
+                src={Push}
                 height={50}
                 width={90}
                 style={{ marginInline: 20 }}
