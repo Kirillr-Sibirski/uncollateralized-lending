@@ -18,8 +18,8 @@ const EthInWei = 1000000000000000000;
 
 const Home = () => {
   const [connectedAddress, setConnectedAddress] = useState(null)
-  const contractAddress = '0x6310766eF1939BF36f4a60d63a52C16805C15485'
-  const managerContractAddr = '0x1DB49BaF4695171EBCEC49f3fe577c8dc1a33446'
+  const contractAddress = '0xbff46705dda87ACB3Ed4c0A93320458859054565'
+  const managerContractAddr = '0x3863d303e3a7b9Da469fB51e7F086a22640BD71F'
   const usdcContractAddr = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'
   const GITCOIN_PASSPORT_HOLDERS = '0x1cde61966decb8600dfd0749bd371f12'
   const ROCIFI_CREDIT_HOLDERS = '0xb3ac412738ed399acab21fbda9add42c'
@@ -113,7 +113,10 @@ const Home = () => {
   const callSismoContract = async (response) => {
     try {// Replace with the function name you want to call
       setSismoResp(response);
+
       const result = await managerContract.estimateLoan(sismoResp);
+      console.log("Result: ", result)
+
       setShowLoan(true);
       setCreditScore(result[0])
       setLoanInterest(result[1]);
