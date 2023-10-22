@@ -6,6 +6,7 @@ import {
 import { ethers } from 'ethers'
 import ABI from '../contracts/LoanFactoryABI.json'
 import managerABI from '../contracts/ManagerFactoryABI.json'
+import usdcABI from '../contracts/usdcABI.json'
 import React, { useEffect, useState } from 'react'
 import HowItWorks from '../assets/HowItWorks.png'
 import Compound from '../assets/compound-logo.png'
@@ -18,7 +19,8 @@ const EthInWei = 1000000000000000000;
 const Home = () => {
   const [connectedAddress, setConnectedAddress] = useState(null)
   const contractAddress = '0xeBCFaD55a5917fD2014E5E015E0c66E4c304a402'
-  const managerContractAddr = '0x3c7FBd92891e446b9D648548A64046343FA95E95';
+  const managerContractAddr = '0x3c7FBd92891e446b9D648548A64046343FA95E95'
+  const usdcContractAddr = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'
   const GITCOIN_PASSPORT_HOLDERS = '0x1cde61966decb8600dfd0749bd371f12'
   const ROCIFI_CREDIT_HOLDERS = '0xb3ac412738ed399acab21fbda9add42c'
 
@@ -35,6 +37,7 @@ const Home = () => {
   const [sismoResp, setSismoResp] = useState(0)
   const [signedContract, setSignedContract] = useState(null)
   const [managerContract, setManagerContract] = useState(null)
+  const [baseTokenContract, setBaseTokenContract] = useState(null)
 
   const handleConnectWallet = async () => {
     try {
@@ -63,7 +66,11 @@ const Home = () => {
     if (!connectedAddress || loanAmount + loanInterestAmount - amountPaid > 0) {
       return
     }
-    const txnHash = await signedContract.repayFull({ value: ethers.utils.parseEther(String(loanAmount + loanInterestAmount - amountPaid / EthInWei)) });
+    const owed = signedContract.totalOwed();
+    // Need to approve the transfer of funds first
+    const txnHashToken = baseTokenContract.approve(contractAddress, owed);
+    await txnHashToken.wait();
+    const txnHash = await signedContract.repayFull();
     await txnHash.wait();
   }
 
@@ -71,7 +78,11 @@ const Home = () => {
     if (!connectedAddress || !amount || amount > loanAmount + loanInterestAmount - amountPaid) {
       return
     }
-    const txnHash = await signedContract.repayInterestRate({ value: ethers.utils.parseEther(String(amount / EthInWei)) });
+    const repay = signedContract.checkRepay(connectedAddress)[1];
+    // Need to approve the transfer of funds first
+    const txnHashToken = baseTokenContract.approve(contractAddress, repay);
+    await txnHashToken.wait();
+    const txnHash = await signedContract.repayInterestRate();
     await txnHash.wait();
   }
 
@@ -89,6 +100,7 @@ const Home = () => {
       const signer = provider.getSigner();
       setSignedContract(new ethers.Contract(contractAddress, ABI, signer))
       setManagerContract(new ethers.Contract(managerContractAddr, managerABI, provider))
+      setBaseTokenContract(new ethers.Contract(usdcContractAddr, usdcABI, provider)); 
     }
   }, [connectedAddress])
 
