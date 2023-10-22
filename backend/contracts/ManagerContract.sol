@@ -286,7 +286,7 @@ contract LoanFactory {
     /*
         Repay back the borrowed amount
     */
-    function repayInterestRate() public payable onlyBorrower {
+    function repayInterestRate() public onlyBorrower {
         // Amount must be first approved in ERC-20 token contract
         (, int amount) = checkRepay(msg.sender);
         require(
@@ -305,7 +305,7 @@ contract LoanFactory {
         cometUser.setRepayDue(0);
     }
 
-    function repayFull() public payable onlyBorrower {
+    function repayFull() public onlyBorrower {
         // Amount must be first approved in ERC-20 token contract
         CometHelper cometUser = specificComets[msg.sender];
         int owedAmount = cometUser.owed();
