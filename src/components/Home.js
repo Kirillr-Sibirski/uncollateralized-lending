@@ -130,7 +130,7 @@ const Home = () => {
         '0xa3a7b6a06b128be64a099c7fed49d778008eb48a',
       ],
     },
-    displayRawResponse: true, // this enables you to get access directly to the
+    displayRawResponse: false, // this enables you to get access directly to the
     // Sismo Connect Response in the vault instead of redirecting back to the app
   }
 

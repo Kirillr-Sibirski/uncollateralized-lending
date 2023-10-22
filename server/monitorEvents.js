@@ -1,6 +1,7 @@
 const { ethers } = require("ethers");
 require('dotenv').config();
 const fs = require("fs"); // Import the Node.js file system module
+const PushAPI = require("@pushprotocol/restapi");
 
 // Load the ABI from your JSON file
 const contractAbi = JSON.parse(fs.readFileSync("./ABI.json", "utf8"))
@@ -14,6 +15,7 @@ const contractAddress = "0x938223B32240ad0D6862D6F7785f07EC2D153a22";
 const provider = new ethers.providers.InfuraProvider('goerli', infuraApiKey);
 // Create a new wallet from the private key
 const wallet = new ethers.Wallet(privateKey, provider);
+const userAlice = await PushAPI.initialize(wallet, { env: 'staging' });
 
 const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
@@ -35,6 +37,14 @@ async function processComets() {
             console.log(cometAddresses[i]);
             const isLiquitable = await contract.checkLiquitable(cometAddresses[i]);// Check if liquitable
             if(isLiquitable) {
+                // We send notification
+                await userAlice.channel.send([cometAddresses[i]], { 
+                notification: {
+                    title: 'Your loan has been defaulted.',
+                    body: 'Your credit score has been damaged.',
+                }
+                });
+
                 // Define the transaction details
                 const encodedData = contract.interface.encodeFunctionData('liquidateEvent(address)', [cometAddresses[i]]);
                 const transaction = {
@@ -54,6 +64,14 @@ async function processComets() {
             const health = ethers.utils.formatUnits(hexValue[0], 0); // 0 is the number of decimal places
 
             if(health < 15) {
+                // We send notification to user notifying them that collateral to loan ratio is unhealthy.
+                await userAlice.channel.send([cometAddresses[i]], { 
+                    notification: {
+                      title: 'Collateral to loan ratio has gone down',
+                      body: 'You have one day to repay interest rate on your loan before your credit score will be decreased.',
+                    }
+                  });
+
                 // Define the transaction details
                 const encodedData = contract.interface.encodeFunctionData('repayDueDay(address)', [cometAddresses[i]]);
                 const transaction = {
@@ -85,6 +103,14 @@ async function processComets() {
             // If loan was repaid this won't execute but the only problem rn is that it will constantly call overdue payment function on the smart contract we need some kind of a counter.
             if(daysPassed >= 3) {
                 console.log("More than 3 days passed.")
+                // We send notification
+                await userAlice.channel.send([cometAddresses[i]], { 
+                    notification: {
+                        title: 'Your loan payment is overdue by 3 days!',
+                        body: 'Your credit score has been damaged.',
+                    }
+                });
+
                 // Define the transaction details
                 const encodedData = contract.interface.encodeFunctionData('overduePaymentEvent(address, uint)', [cometAddresses[i]], 3);
                 const transaction = {
@@ -100,6 +126,12 @@ async function processComets() {
                 // Wait for the transaction to be mined
                 await txResponse.wait();
             } else if(daysPassed >= 2) {
+                await userAlice.channel.send([cometAddresses[i]], { 
+                    notification: {
+                        title: 'Your loan payment is overdue by 2 days!',
+                        body: 'Your credit score has been damaged.',
+                    }
+                });
                 console.log("More than 2 days passed.");
                 // Define the transaction details
                 const encodedData = contract.interface.encodeFunctionData('overduePaymentEvent(address, uint)', [cometAddresses[i]], 2);
@@ -116,6 +148,12 @@ async function processComets() {
                 // Wait for the transaction to be mined
                 await txResponse.wait();
             } else if(daysPassed >= 1){
+                await userAlice.channel.send([cometAddresses[i]], { 
+                    notification: {
+                        title: 'Your loan payment is overdue by 1 days!',
+                        body: 'Your credit score has been damaged.',
+                    }
+                });
                 console.log("More than 1 day passed.");
                 // Define the transaction details
                 const encodedData = contract.interface.encodeFunctionData('overduePaymentEvent(address, uint)', [cometAddresses[i]], 1);
