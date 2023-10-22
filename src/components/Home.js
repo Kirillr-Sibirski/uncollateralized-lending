@@ -18,8 +18,9 @@ const EthInWei = 1000000000000000000;
 
 const Home = () => {
   const [connectedAddress, setConnectedAddress] = useState(null)
-  const contractAddress = '0xbff46705dda87ACB3Ed4c0A93320458859054565'
-  const managerContractAddr = '0x3863d303e3a7b9Da469fB51e7F086a22640BD71F'
+  const contractAddress = '0xC2eDd4C8fD6ae11bD209e3eE7cC0B60159A92663'
+  const managerContractAddr = '0x6B73EEE565f2c4982fb9d481590e765DC2b98786'
+
   const usdcContractAddr = '0x07865c6E87B9F70255377e024ace6630C1Eaa37F'
   const GITCOIN_PASSPORT_HOLDERS = '0x1cde61966decb8600dfd0749bd371f12'
   const ROCIFI_CREDIT_HOLDERS = '0xb3ac412738ed399acab21fbda9add42c'
@@ -112,20 +113,24 @@ const Home = () => {
 
   const callSismoContract = async (response) => {
     try {// Replace with the function name you want to call
+      console.log("Connected address: ", connectedAddress)
+      console.log("response: ",response)
       setSismoResp(response);
-      console.log('Function result:', result)
     } catch (error) {
       console.error('Error calling smart contract function:', error)
     }
   }
 
   const getLoanEstimate = async () => {
-    const result = await managerContract.estimateLoan(sismoResp);
+    //const result = await managerContract.estimateLoan();
+    console.log(sismoResp)
+    const result = await managerContract.verifySismoConnectResponse(ethers.utils.toUtf8Bytes(sismoResp));
+    console.log("Result: ",result)
     setShowLoan(true);
-    setCreditScore(result[0])
-    setLoanInterest(result[1]);
-    setLoanAmount(result[2]);
-    setCollateralAmount(result[3])
+    // setCreditScore(result[0])
+    // setLoanInterest(result[1]);
+    // setLoanAmount(result[2]);
+    // setCollateralAmount(result[3])
   }
 
   useEffect(()=>{
@@ -141,8 +146,8 @@ const Home = () => {
     if (connectedAddress) {
       const signer = provider.getSigner();
       setSignedContract(new ethers.Contract(contractAddress, ABI, signer))
-      setManagerContract(new ethers.Contract(managerContractAddr, managerABI, provider))
-      setBaseTokenContract(new ethers.Contract(usdcContractAddr, usdcABI, provider)); 
+      setManagerContract(new ethers.Contract(managerContractAddr, managerABI, signer))
+      setBaseTokenContract(new ethers.Contract(usdcContractAddr, usdcABI, signer)); 
     }
   }, [connectedAddress])
 
@@ -175,9 +180,9 @@ const Home = () => {
       // For development purposes insert the identifier that you want to impersonate here
       // Never use this in production
       impersonate: [
-        '0x4b83c3caf46c82a2c755242732a28fd296a9db4b',
-        '0xa3a7b6a06b128be64a099c7fed49d778008eb48a',
-      ],
+        "0xba0e13b23b2d5fd5cb80544a34345fd370151179", // gitcoin score of 42, should allow user to get loan
+        "0x2b787a5993cf3a17c02809df0b44d0bc8c7fd8ef", // rocifi score of 2, should give user 9 points
+      ], 
     },
     displayRawResponse: false, // this enables you to get access directly to the
     // Sismo Connect Response in the vault instead of redirecting back to the app
@@ -445,8 +450,17 @@ const Home = () => {
                 onResponseBytes={(response) => {
                   console.log('Call Sismo Contract.')
                   callSismoContract(response)
-                  //    call your contract/backend with the response as bytes
+                  // call your contract/backend with the response as bytes
                 }}
+              //   onResponse={function(response) {
+              //     fetch("/api/verify", {
+              //       method: "POST",
+              //       body: JSON.stringify(response),
+              //     })
+              //     .then(res => res.json())
+              //     .then(data => console.log(data));
+              // }}}
+
                 overrideStyle={{
                   backgroundColor: "#3466AA",
                 }}
