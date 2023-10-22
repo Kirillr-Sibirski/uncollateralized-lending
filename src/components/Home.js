@@ -40,6 +40,18 @@ const Home = () => {
   const [baseTokenContract, setBaseTokenContract] = useState(null)
   const [timeOverdue, setTimeOverdue] = useState(0);
 
+  const getCurrentAccount = async () => {
+    const { ethereum } = window;
+
+    const accounts = await ethereum.request({ method: "eth_accounts" });
+
+    if (!accounts || accounts?.length === 0) {
+      return null;
+    }
+    const account = accounts[0];
+    setConnectedAddress(account);
+  };
+
   const handleConnectWallet = async () => {
     try {
       if (window.ethereum) {
@@ -112,6 +124,10 @@ const Home = () => {
       console.error('Error calling smart contract function:', error)
     }
   }
+
+  useEffect(() => {
+    getCurrentAccount();
+  }, [])
 
   useEffect(() => {
     if (connectedAddress) {
